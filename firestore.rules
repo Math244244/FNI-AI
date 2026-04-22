@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── HELPERS ───────────────────────────────────────────────────────────
+    function isSignedIn()     { return request.auth != null; }
+    function uid()            { return request.auth.uid; }
+    function userDoc()        { return get(/databases/$(database)/documents/users/$(uid())); }
+    function role()           { return userDoc().data.role; }
+    function dealerId()       { return userDoc().data.dealerId; }
+    function isSuperAdmin()   { return isSignedIn() && role() == 'superAdmin'; }
+    function isDealerAdmin()  { return isSignedIn() && role() == 'dealerAdmin'; }
+    function isSeller()       { return isSignedIn() && (role() == 'seller' || role() == 'dealerAdmin'); }
+    function sameDealer(did)  { return isSignedIn() && dealerId() == did; }
+
+    // ─── USERS ─────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read:   if isSignedIn() && (uid() == userId || isSuperAdmin() || (isDealerAdmin() && sameDealer(resource.data.dealerId)));
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin() || uid() == userId;
+      allow delete: if isSuperAdmin();
+    }
+
+    // ─── DEALERS ───────────────────────────────────────────────────────────
+    match /dealers/{dealerId} {
+      allow read:   if isSignedIn();
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin() || (isDealerAdmin() && sameDealer(dealerId));
+      allow delete: if isSuperAdmin();
+    }
+
+    // ─── DEALER SETTINGS ───────────────────────────────────────────────────
+    match /dealerSettings/{dealerId} {
+      allow read:   if isSignedIn() && (sameDealer(dealerId) || isSuperAdmin());
+      allow write:  if isSuperAdmin() || (isDealerAdmin() && sameDealer(dealerId)) || (isSeller() && sameDealer(dealerId));
+    }
+
+    // ─── PRESENTATIONS ─────────────────────────────────────────────────────
+    match /presentations/{presId} {
+      // Seller: can create, read own
+      allow create: if isSeller();
+      allow read:   if isSignedIn() && (
+        isSuperAdmin() ||
+        resource.data.userId == uid() ||
+        (isDealerAdmin() && sameDealer(resource.data.dealerId))
+      );
+      allow update: if isSuperAdmin() || resource.data.userId == uid();
+      allow delete: if isSuperAdmin();
+    }
+  }
+}
