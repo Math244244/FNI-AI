@@ -142,6 +142,17 @@ export default function Reports() {
               ))}
             </div>
 
+            {filteredAnalytics?.menuChoiceMix && (
+              <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
+                <div className="overline" style={{ marginBottom: 8 }}>Mix menu (choix client scellé)</div>
+                <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+                  <span>Essentiel : <strong>{filteredAnalytics.menuChoiceMix.essentiel}</strong></span>
+                  <span>Recommandé : <strong>{filteredAnalytics.menuChoiceMix.recommande}</strong></span>
+                  <span>Premium : <strong>{filteredAnalytics.menuChoiceMix.premium}</strong></span>
+                </div>
+              </div>
+            )}
+
             {/* Date filter bar */}
             <div className="card" style={{ padding: '0.875rem 1.25rem', marginBottom: '1.5rem', display: 'flex', gap: '0.875rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div>

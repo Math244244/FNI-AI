@@ -1,7 +1,8 @@
 import { db } from '../firebase';
 import {
-  doc, getDoc, setDoc, serverTimestamp,
+  doc, getDoc, setDoc, updateDoc, serverTimestamp,
 } from 'firebase/firestore';
+import { DEALER_SETTINGS_VERSION } from '../utils/dealerSettingsMerge';
 
 /**
  * Load dealer-specific settings from Firestore.
@@ -19,15 +20,18 @@ export async function loadDealerSettings(dealerId) {
 }
 
 /**
- * Persist dealer settings to Firestore.
+ * Persist dealer settings. Utilise `updateDoc` quand le document existe afin
+ * de remplacer le champ `overrides` en entier (évite le merge profond des maps).
  * @param {string} dealerId
- * @param {object} settings  { productOrder, customProducts, productOverrides }
+ * @param {object} settings
  */
 export async function saveDealerSettings(dealerId, settings) {
   if (!dealerId) throw new Error('dealerId is required');
-  return setDoc(
-    doc(db, 'dealerSettings', dealerId),
-    { ...settings, updatedAt: serverTimestamp() },
-    { merge: true },
-  );
+  const ref = doc(db, 'dealerSettings', dealerId);
+  const snap = await getDoc(ref);
+  const payload = { ...settings, updatedAt: serverTimestamp() };
+  if (snap.exists()) {
+    return updateDoc(ref, payload);
+  }
+  return setDoc(ref, { ...payload, schemaVersion: DEALER_SETTINGS_VERSION });
 }

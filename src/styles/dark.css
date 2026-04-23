@@ -1,0 +1,69 @@
+/* ═══════════════════════════════════════════════════════════
+   DARK MODE — Miroir cinema (mode soirée F&I)
+   Active via <html data-theme="dark"> (controllé par ThemeProvider)
+   ═══════════════════════════════════════════════════════════ */
+
+[data-theme='dark'] {
+  --ivoire-50:   #16161A;
+  --ivoire-100:  #0E0E11;
+  --ivoire-200:  #1A1A1F;
+  --ivoire-300:  #24242B;
+
+  --graphite-900: #F7F4EE;
+  --graphite-800: #EDEDF1;
+  --graphite-700: #D8D8DE;
+  --graphite-600: #B8B8C2;
+  --graphite-500: #8A8A95;
+  --graphite-400: #6B6B76;
+  --graphite-300: #4A4A54;
+  --graphite-200: #353540;
+  --graphite-100: #24242B;
+  --graphite-50:  #1A1A1F;
+
+  --text-primary:   #F7F4EE;
+  --text-secondary: #B8B8C2;
+  --text-tertiary:  #6B6B76;
+  --text-muted:     #6B6B76;
+  --text-inverse:   #0E0E11;
+
+  --bg-page:    #0E0E11;
+  --bg-canvas:  #0A0A0D;
+  --bg-card:    #16161A;
+  --bg-input:   #1A1A1F;
+  --bg-hover:   #1F1F26;
+  --bg-subtle:  #16161A;
+  --bg-elevated:#1C1C22;
+  --bg-inverse: #F7F4EE;
+
+  --border-hair: rgba(247, 244, 238, 0.06);
+  --border-sm:   rgba(247, 244, 238, 0.10);
+  --border-md:   rgba(247, 244, 238, 0.16);
+  --border-lg:   rgba(247, 244, 238, 0.22);
+  --border-warm: rgba(184,147,90,0.20);
+
+  --shadow-xs:  0 1px 2px rgba(0,0,0,0.4);
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35);
+  --shadow-md:  0 6px 16px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.35);
+  --shadow-lg:  0 14px 32px rgba(0,0,0,0.55), 0 4px 8px rgba(0,0,0,0.3);
+  --shadow-xl:  0 28px 64px rgba(0,0,0,0.6), 0 8px 16px rgba(0,0,0,0.35);
+
+  --crimson-400: #E46060;
+  --crimson-500: #D64E4E;
+  --crimson-600: #C73838;
+  --forest-400: #2A8F5E;
+  --forest-500: #3AA770;
+  --forest-600: #2A8F5E;
+
+  --surface-topbar: rgba(14, 14, 17, 0.82);
+  --surface-glass:  rgba(22, 22, 26, 0.72);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+  }
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+}

@@ -47,5 +47,17 @@ service cloud.firestore {
       allow update: if isSuperAdmin() || resource.data.userId == uid();
       allow delete: if isSuperAdmin();
     }
+
+    // Brouillons (autosave)
+    match /presentation_drafts/{draftId} {
+      allow read, write, delete: if isSignedIn() && (resource == null || resource.data.userId == uid());
+      allow create: if isSignedIn() && request.resource.data.userId == uid();
+    }
+
+    // Liens publics lecture (snapshot pour /t/:token) — le jeton est secret
+    match /publicPresentationTokens/{token} {
+      allow read: if true;
+      allow create, update, delete: if isSeller() || isSuperAdmin();
+    }
   }
 }

@@ -1,21 +1,29 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PresentationProvider } from './context/PresentationContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { TooltipProvider } from './components/ui/Tooltip';
+import ErrorBoundary from './components/ErrorBoundary';
+import LoadingSkeleton from './components/LoadingSkeleton';
+import CommandPalette, { CommandPaletteProvider } from './components/CommandPalette';
 
-// Pages
-import Login           from './pages/Login';
-import Dashboard       from './pages/Dashboard';
-import VehicleSelection from './pages/VehicleSelection';
-import SlideDeck       from './pages/SlideDeck';
-import Settings        from './pages/Settings';
-import Reports         from './pages/Reports';
+/* ── Lazy-loaded routes (code splitting) ── */
+const Login            = lazy(() => import('./pages/Login'));
+const Dashboard        = lazy(() => import('./pages/Dashboard'));
+const VehicleSelection = lazy(() => import('./pages/VehicleSelection'));
+const SlideDeck        = lazy(() => import('./pages/SlideDeck'));
+const Settings         = lazy(() => import('./pages/Settings'));
+const Reports          = lazy(() => import('./pages/Reports'));
+const NotFound         = lazy(() => import('./pages/NotFound'));
+const ClientView       = lazy(() => import('./pages/ClientView'));
+const Takeaway         = lazy(() => import('./pages/Takeaway'));
+const MenuSelling      = lazy(() => import('./pages/MenuSelling'));
 
-// Admin
-import AdminLayout     from './pages/admin/AdminLayout';
-import AdminDashboard  from './pages/admin/AdminDashboard';
-import DealerManagement from './pages/admin/DealerManagement';
-import AdminReports    from './pages/admin/AdminReports';
+const AdminLayout      = lazy(() => import('./pages/admin/AdminLayout'));
+const AdminDashboard   = lazy(() => import('./pages/admin/AdminDashboard'));
+const DealerManagement = lazy(() => import('./pages/admin/DealerManagement'));
+const AdminReports     = lazy(() => import('./pages/admin/AdminReports'));
 
 /* ── Protected Route ── */
 function ProtectedRoute({ children }) {
@@ -25,7 +33,6 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-/* ── Admin Route ── */
 function AdminRoute({ children }) {
   const { currentUser, userProfile, loading } = useAuth();
   if (loading) return <LoadingScreen />;
@@ -34,32 +41,39 @@ function AdminRoute({ children }) {
   return children;
 }
 
-/* ── Loading screen ── */
+/* ── Loading screen prestige ── */
 function LoadingScreen() {
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      background: '#FFFFFF',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--bg-page)',
+      gap: '2rem',
     }}>
       <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem',
+        fontFamily: 'var(--font-display)',
+        fontWeight: 600,
+        fontSize: '1.8rem',
+        color: 'var(--text-primary)',
+        letterSpacing: '-0.03em',
+        display: 'inline-flex',
+        alignItems: 'baseline',
+        gap: '0.4rem',
       }}>
-        <div style={{
-          fontSize: '1.75rem', fontWeight: 800, color: '#1A1A1A',
-          fontFamily: 'Plus Jakarta Sans, Inter, sans-serif',
-          letterSpacing: '-0.03em',
-        }}>
-          Avantage <span style={{ color: '#D62828' }}>Plus</span>
-        </div>
-        <div style={{
-          width: 36, height: 36, border: '3px solid #F0F0F0',
-          borderTopColor: '#D62828', borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
-        }} />
-        <div style={{ color: '#999', fontSize: '0.85rem', fontWeight: 500 }}>
-          Chargement…
-        </div>
+        Avantage <span style={{ fontStyle: 'italic', fontWeight: 500, color: 'var(--or-700)' }}>Plus</span>
+      </div>
+      <div style={{
+        width: 36, height: 36,
+        border: '2.5px solid var(--graphite-200)',
+        borderTopColor: 'var(--or-700)',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)', letterSpacing: '0.06em' }}>
+        Chargement…
       </div>
     </div>
   );
@@ -67,47 +81,61 @@ function LoadingScreen() {
 
 /* ── App Routes ── */
 function AppRoutes() {
-  const { currentUser, userProfile, loading } = useAuth();
+  const { currentUser, userProfile } = useAuth();
 
-  // Auto-redirect to admin if superAdmin visits /
   const homePath = !currentUser ? '/login'
     : userProfile?.role === 'superAdmin' ? '/admin'
     : '/dashboard';
 
   return (
     <PresentationProvider>
-      <Routes>
-        {/* Public */}
-        <Route path="/login" element={<Login />} />
+      <CommandPaletteProvider>
+        <a href="#main-content" className="skip-to-content">Aller au contenu principal</a>
+        <CommandPalette />
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            {/* Public */}
+            <Route path="/login"         element={<Login />} />
+            <Route path="/t/:token"      element={<Takeaway />} />
+            <Route path="/client-view/:sessionId" element={<ClientView />} />
 
-        {/* Redirect root */}
-        <Route path="/" element={<Navigate to={homePath} replace />} />
+            {/* Redirect root */}
+            <Route path="/" element={<Navigate to={homePath} replace />} />
 
-        {/* Protected seller/dealer routes */}
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/select-vehicle" element={<ProtectedRoute><VehicleSelection /></ProtectedRoute>} />
-        <Route path="/presentation" element={<ProtectedRoute><SlideDeck /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            {/* Protected seller/dealer routes */}
+            <Route path="/dashboard"       element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/select-vehicle"  element={<ProtectedRoute><VehicleSelection /></ProtectedRoute>} />
+            <Route path="/presentation"    element={<ProtectedRoute><SlideDeck /></ProtectedRoute>} />
+            <Route path="/settings"        element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/reports"         element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/menu"            element={<ProtectedRoute><MenuSelling /></ProtectedRoute>} />
 
-        {/* Admin routes */}
-        <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="dealers" element={<DealerManagement />} />
-          <Route path="reports" element={<AdminReports />} />
-        </Route>
+            {/* Admin routes */}
+            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index               element={<AdminDashboard />} />
+              <Route path="dealers"      element={<DealerManagement />} />
+              <Route path="reports"      element={<AdminReports />} />
+            </Route>
 
-        {/* Catch-all */}
-        <Route path="*" element={<Navigate to={homePath} replace />} />
-      </Routes>
+            {/* 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </CommandPaletteProvider>
     </PresentationProvider>
   );
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <TooltipProvider>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </TooltipProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

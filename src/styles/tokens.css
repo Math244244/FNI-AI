@@ -1,0 +1,228 @@
+/* ═══════════════════════════════════════════════════════════
+   AVANTAGE PLUS — DESIGN TOKENS v3 (Prestige)
+   Palette Ivoire / Graphite / Crimson / Or fumé
+   ═══════════════════════════════════════════════════════════ */
+
+:root, [data-theme='light'] {
+  /* ── Palette signature ── */
+  --ivoire-50:   #FBF9F4;
+  --ivoire-100:  #F7F4EE;   /* Page background */
+  --ivoire-200:  #F1ECE1;   /* Cards subtle */
+  --ivoire-300:  #E8E0CF;   /* Borders warm */
+
+  --graphite-900: #0E0E11;  /* Text/display */
+  --graphite-800: #1A1A1F;
+  --graphite-700: #2B2B33;
+  --graphite-600: #40404A;
+  --graphite-500: #5A5A66;  /* Body secondary */
+  --graphite-400: #8A8A95;  /* Muted */
+  --graphite-300: #B8B8C2;
+  --graphite-200: #D8D8DE;
+  --graphite-100: #EDEDF1;
+  --graphite-50:  #F5F5F7;
+
+  --crimson-700: #6B0F0F;
+  --crimson-600: #8B1A1A;   /* Pas important (décision) */
+  --crimson-500: #A32222;
+  --crimson-400: #C73838;   /* Brand action */
+  --crimson-300: #E46060;
+  --crimson-glow: rgba(139, 26, 26, 0.22);
+
+  --forest-700: #084A2D;
+  --forest-600: #0F5D3A;    /* Important (décision) */
+  --forest-500: #157445;
+  --forest-400: #2A8F5E;
+  --forest-glow: rgba(15, 93, 58, 0.22);
+
+  --or-900: #8A6A3E;        /* Or fumé profond */
+  --or-700: #B8935A;        /* Or signature */
+  --or-500: #D4B074;        /* Or chaleureux */
+  --or-300: #E8CC96;
+  --or-100: rgba(184,147,90,0.10);
+
+  /* ── Brand mapping (retrocompat) ── */
+  --brand-red:         var(--crimson-400);
+  --brand-red-deep:    var(--crimson-600);
+  --brand-red-hover:   var(--crimson-500);
+  --brand-red-light:   rgba(199, 56, 56, 0.07);
+  --brand-red-border:  rgba(199, 56, 56, 0.18);
+  --brand-red-glow:    var(--crimson-glow);
+  --brand-green:       var(--forest-600);
+  --brand-green-light: rgba(15, 93, 58, 0.07);
+  --brand-green-border:rgba(15, 93, 58, 0.20);
+  --brand-mauve:       var(--or-700);
+  --brand-mauve-light: var(--or-100);
+  --brand-mauve-border:rgba(184,147,90,0.22);
+  --brand-gold:        var(--or-700);
+  --brand-gold-light:  var(--or-100);
+
+  /* ── Decision colors (SlideDeck binaire) ── */
+  --decision-yes:        var(--forest-600);
+  --decision-yes-hover:  var(--forest-500);
+  --decision-yes-light:  rgba(15, 93, 58, 0.10);
+  --decision-no:         var(--crimson-600);
+  --decision-no-hover:   var(--crimson-500);
+  --decision-no-light:   rgba(139, 26, 26, 0.08);
+
+  /* ── Hotspots ── */
+  --hotspot-blue:       #2B6CDB;
+  --hotspot-blue-light: rgba(43,108,219,0.14);
+  --hotspot-green:      var(--forest-500);
+
+  /* ── Legacy grays (mapping progressif) ── */
+  --gray-50:  var(--graphite-50);
+  --gray-100: var(--graphite-100);
+  --gray-200: var(--graphite-200);
+  --gray-300: var(--graphite-300);
+  --gray-400: var(--graphite-400);
+  --gray-500: var(--graphite-500);
+  --gray-600: var(--graphite-600);
+  --gray-700: var(--graphite-700);
+  --gray-800: var(--graphite-800);
+  --gray-900: var(--graphite-900);
+
+  /* ── Text ── */
+  --text-primary:   var(--graphite-900);
+  --text-secondary: var(--graphite-500);
+  --text-tertiary:  var(--graphite-400);
+  --text-muted:     var(--graphite-400);
+  --text-inverse:   var(--ivoire-100);
+
+  /* ── Backgrounds ── */
+  --bg-page:    var(--ivoire-100);
+  --bg-canvas:  var(--ivoire-50);
+  --bg-card:    #FFFFFF;
+  --bg-input:   #FFFFFF;
+  --bg-hover:   var(--ivoire-200);
+  --bg-subtle:  var(--ivoire-200);
+  --bg-elevated:#FFFFFF;
+  --bg-inverse: var(--graphite-900);
+
+  /* ── Semantic ── */
+  --success:        var(--forest-600);
+  --success-light:  rgba(15, 93, 58, 0.08);
+  --success-border: rgba(15, 93, 58, 0.20);
+  --warning:        #C28300;
+  --warning-light:  rgba(194, 131, 0, 0.08);
+  --warning-border: rgba(194, 131, 0, 0.22);
+  --danger:         var(--crimson-500);
+  --danger-light:   rgba(163, 34, 34, 0.06);
+  --danger-border:  rgba(163, 34, 34, 0.16);
+  --info:           #2B6CDB;
+  --info-light:     rgba(43, 108, 219, 0.07);
+  --info-border:    rgba(43, 108, 219, 0.18);
+
+  /* ── Borders ── */
+  --border-hair: rgba(14, 14, 17, 0.06);
+  --border-sm:   rgba(14, 14, 17, 0.08);
+  --border-md:   rgba(14, 14, 17, 0.12);
+  --border-lg:   rgba(14, 14, 17, 0.18);
+  --border-warm: var(--ivoire-300);
+
+  /* ── Shadows — editorial soft ── */
+  --shadow-xs:  0 1px 2px rgba(14,14,17,0.04);
+  --shadow-sm:  0 1px 3px rgba(14,14,17,0.05), 0 1px 2px rgba(14,14,17,0.03);
+  --shadow-md:  0 6px 16px rgba(14,14,17,0.06), 0 2px 4px rgba(14,14,17,0.04);
+  --shadow-lg:  0 14px 32px rgba(14,14,17,0.08), 0 4px 8px rgba(14,14,17,0.04);
+  --shadow-xl:  0 28px 64px rgba(14,14,17,0.12), 0 8px 16px rgba(14,14,17,0.05);
+  --shadow-press: inset 0 1px 2px rgba(14,14,17,0.08);
+  --shadow-red:    0 6px 18px rgba(199, 56, 56, 0.22);
+  --shadow-red-lg: 0 10px 28px rgba(139, 26, 26, 0.28);
+  --shadow-green:  0 6px 18px rgba(15, 93, 58, 0.22);
+  --shadow-gold:   0 6px 20px rgba(184, 147, 90, 0.25);
+
+  /* ── Radius ── */
+  --r-xs:   4px;
+  --r-sm:   8px;
+  --r-md:   12px;
+  --r-lg:   16px;
+  --r-xl:   20px;
+  --r-2xl:  24px;
+  --r-3xl:  32px;
+  --r-full: 9999px;
+
+  /* ── Typography stack ── */
+  --font-display: 'Fraunces', 'Georgia', 'Times New Roman', serif;
+  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:    ui-monospace, 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+
+  /* ── Fluid type scale (clamp) ── */
+  --fs-2xs:    clamp(0.6875rem, 0.65rem + 0.15vw, 0.75rem);
+  --fs-xs:     clamp(0.75rem, 0.72rem + 0.15vw, 0.8125rem);
+  --fs-sm:     clamp(0.8125rem, 0.78rem + 0.18vw, 0.875rem);
+  --fs-base:   clamp(0.9375rem, 0.9rem + 0.2vw, 1rem);
+  --fs-md:     clamp(1rem, 0.96rem + 0.22vw, 1.0625rem);
+  --fs-lg:     clamp(1.125rem, 1.08rem + 0.3vw, 1.25rem);
+  --fs-xl:     clamp(1.25rem, 1.2rem + 0.4vw, 1.5rem);
+  --fs-2xl:    clamp(1.5rem, 1.42rem + 0.6vw, 1.875rem);
+  --fs-3xl:    clamp(1.75rem, 1.6rem + 0.9vw, 2.25rem);
+  --fs-4xl:    clamp(2.125rem, 1.85rem + 1.4vw, 3rem);
+  --fs-display:clamp(2.5rem, 2.1rem + 2.2vw, 4rem);
+  --fs-hero:   clamp(3rem, 2.3rem + 3.2vw, 5.5rem);
+
+  /* ── Line heights ── */
+  --lh-tight:    1.1;
+  --lh-snug:     1.25;
+  --lh-normal:   1.5;
+  --lh-relaxed:  1.65;
+  --lh-loose:    1.8;
+
+  /* ── Letter spacing ── */
+  --ls-tight:   -0.02em;
+  --ls-snug:    -0.01em;
+  --ls-normal:  0;
+  --ls-wide:    0.04em;
+  --ls-wider:   0.08em;
+
+  /* ── Space scale ── */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+  --sp-16: 4rem;
+
+  /* ── Transitions ── */
+  --ease-out:   cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring:cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease:       var(--ease-in-out);
+  --tx:         all 0.2s var(--ease-in-out);
+  --tx-slow:    all 0.4s var(--ease-out);
+  --tx-fast:    all 0.12s var(--ease-in-out);
+
+  /* ── Z index scale ── */
+  --z-base:       0;
+  --z-dropdown:   100;
+  --z-sticky:     200;
+  --z-overlay:    800;
+  --z-modal:      1000;
+  --z-popover:    1100;
+  --z-tooltip:    1200;
+  --z-toast:      1300;
+  --z-cmdk:       1400;
+
+  /* ── Component surfaces ── */
+  --surface-topbar: rgba(247, 244, 238, 0.88);
+  --surface-glass:  rgba(255, 255, 255, 0.72);
+  --backdrop-blur:  saturate(180%) blur(18px);
+}
+
+/* ══════════ prefers-reduced-motion ══════════ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --tx:       all 0.01s linear;
+    --tx-slow:  all 0.01s linear;
+    --tx-fast:  all 0.01s linear;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

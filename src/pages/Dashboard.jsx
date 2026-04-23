@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { getUserStats, getUserPresentations } from '../services/presentationService';
 import {
   BarChart2, Play, Send, Settings, LogOut,
-  TrendingUp, FileText, Shield, Clock, ArrowRight, User,
+  TrendingUp, FileText, Shield, ArrowRight, User, Sparkles, Moon, Sun,
 } from 'lucide-react';
 
 export default function Dashboard() {
   const { currentUser, userProfile, isDemo, isSuperAdmin, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const [stats, setStats]   = useState({ total: 0, thisMonth: 0, avgProtectionRate: 0 });
@@ -66,8 +68,11 @@ export default function Dashboard() {
           <button className="topbar-btn" onClick={() => navigate('/reports')}>
             <BarChart2 size={14} /> Rapports
           </button>
-          <button className="topbar-btn" onClick={() => navigate('/settings')}>
+          <button className="topbar-btn" onClick={() => navigate('/settings')} aria-label="Paramètres">
             <Settings size={14} />
+          </button>
+          <button className="topbar-btn" onClick={toggleTheme} aria-label="Basculer le thème">
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </button>
           <span className="topbar-divider" />
           <span className="topbar-user">{currentUser?.email}</span>
@@ -79,45 +84,34 @@ export default function Dashboard() {
 
       {/* Main */}
       <main className="main-content">
-        {/* Header */}
-        <div style={{ marginBottom: '2.25rem' }} className="animate-up">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.4rem' }}>
-            <h1 style={{ fontSize: '1.75rem' }}>
-              {greeting}, {displayName}
-            </h1>
-            {isDemo && (
-              <span className="badge badge-amber">Mode Démo</span>
-            )}
-          </div>
-          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem', margin: 0 }}>
-            {dealerName} — {new Date().toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        {/* Header éditorial */}
+        <div style={{ marginBottom: '2.5rem' }} className="animate-up">
+          <span className="overline">
+            {new Date().toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </span>
+          <h1 className="display-italic" style={{
+            fontSize: 'var(--fs-3xl)',
+            margin: '0.35rem 0 0.25rem',
+            letterSpacing: '-0.02em',
+            display: 'flex',
+            alignItems: 'baseline',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+          }}>
+            {greeting}, {displayName}.
+            {isDemo && <span className="badge badge-amber" style={{ marginLeft: '0.25rem' }}>Mode démo</span>}
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)', margin: 0 }}>
+            {dealerName} · votre tableau de bord F&I
           </p>
         </div>
 
-        {/* Stats row */}
+        {/* KPI row */}
         {!isDemo && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: '1rem', marginBottom: '2.25rem' }} className="animate-up stagger">
-            <div className="stat-card red">
-              <div className="stat-icon red"><FileText size={20} color="var(--brand-red)" /></div>
-              <div>
-                <div className="stat-value">{loading ? '—' : stats.total}</div>
-                <div className="stat-label">Présentations totales</div>
-              </div>
-            </div>
-            <div className="stat-card green">
-              <div className="stat-icon green"><TrendingUp size={20} color="var(--success)" /></div>
-              <div>
-                <div className="stat-value">{loading ? '—' : stats.thisMonth}</div>
-                <div className="stat-label">Ce mois-ci</div>
-              </div>
-            </div>
-            <div className="stat-card blue">
-              <div className="stat-icon blue"><Shield size={20} color="var(--info)" /></div>
-              <div>
-                <div className="stat-value">{loading ? '—' : `${stats.avgProtectionRate}%`}</div>
-                <div className="stat-label">Taux de protection moyen</div>
-              </div>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: '1rem', marginBottom: '2.5rem' }} className="animate-up stagger">
+            <KpiCard label="Présentations" value={loading ? '—' : stats.total} accent="gold" icon={<FileText size={15} />} />
+            <KpiCard label="Ce mois-ci" value={loading ? '—' : stats.thisMonth} accent="green" icon={<TrendingUp size={15} />} />
+            <KpiCard label="Taux de protection" value={loading ? '—' : `${stats.avgProtectionRate}%`} accent="dark" icon={<Shield size={15} />} />
           </div>
         )}
 
@@ -195,7 +189,7 @@ export default function Dashboard() {
                     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                     fontSize: '1rem',
                   }}>
-                    {p.vehicle?.category === 'automobile' ? '🚗' : p.vehicle?.category === 'vr' ? '🚐' : '🏍️'}
+                    <User size={14} color="var(--text-tertiary)" />
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)' }}>
@@ -229,7 +223,7 @@ export default function Dashboard() {
             borderRadius: 'var(--r-lg)',
             display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
           }}>
-            <span style={{ fontSize: '1.1rem', marginTop: '0.1rem' }}>💡</span>
+            <Sparkles size={16} style={{ marginTop: '0.15rem', color: 'var(--warning)' }} />
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--warning)', marginBottom: '0.2rem' }}>
                 Mode démo actif
@@ -241,6 +235,51 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+function KpiCard({ label, value, accent = 'gold', icon }) {
+  const accentMap = {
+    gold:  { color: 'var(--or-700)',      bg: 'var(--or-100)',            border: 'var(--border-warm)' },
+    green: { color: 'var(--forest-600)',  bg: 'var(--brand-green-light)', border: 'var(--brand-green-border)' },
+    red:   { color: 'var(--crimson-500)', bg: 'var(--danger-light)',      border: 'var(--danger-border)' },
+    dark:  { color: 'var(--graphite-900)',bg: 'var(--graphite-50)',       border: 'var(--border-hair)' },
+  }[accent];
+  return (
+    <div
+      className="card"
+      style={{
+        padding: '1.25rem 1.35rem',
+        borderLeft: `3px solid ${accentMap.color}`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{
+          width: 26, height: 26,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 'var(--r-sm)',
+          background: accentMap.bg,
+          border: `1px solid ${accentMap.border}`,
+          color: accentMap.color,
+        }}>{icon}</span>
+        <span className="overline" style={{ marginBottom: 0 }}>{label}</span>
+      </div>
+      <div style={{
+        fontFamily: 'var(--font-display)',
+        fontStyle: 'italic',
+        fontWeight: 600,
+        fontSize: 'var(--fs-3xl)',
+        lineHeight: 1,
+        letterSpacing: '-0.02em',
+        color: 'var(--text-primary)',
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {value}
+      </div>
     </div>
   );
 }

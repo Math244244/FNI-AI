@@ -1,15 +1,37 @@
+import { getInterest } from '../utils/responseHelpers.js';
 import { db } from '../firebase';
 import {
   collection, addDoc, serverTimestamp, query,
-  where, orderBy, getDocs, doc, updateDoc,
+  where, orderBy, getDocs, getDoc, doc, updateDoc, setDoc,
 } from 'firebase/firestore';
+
+/* ═══════════════════════════════════════
+   UPSERT draft (autosave par décision)
+   ═══════════════════════════════════════ */
+export async function upsertDraft(draftId, payload) {
+  try {
+    const ref = doc(db, 'presentation_drafts', draftId);
+    await setDoc(ref, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (e) {
+    console.warn('upsertDraft failed', e);
+  }
+}
 
 /* ═══════════════════════════════════════
    SAVE a completed presentation
    ═══════════════════════════════════════ */
-export async function savePresentation(userId, dealerId, vehicle, responses, mode, timePerProduct = {}) {
+export async function savePresentation(
+  userId,
+  dealerId,
+  vehicle,
+  responses,
+  mode,
+  timePerProduct = {},
+  financing = null,
+  menuFinal = null,
+) {
   const interested = Object.entries(responses)
-    .filter(([, v]) => v === 'yes')
+    .filter(([, v]) => getInterest(v) === 'yes')
     .map(([k]) => k);
 
   const total    = Object.keys(responses).length;
@@ -39,9 +61,45 @@ export async function savePresentation(userId, dealerId, vehicle, responses, mod
     protectionRate:   rate,
     timePerProduct,
     avgTimePerSlide:  avgTime,
+    financing:        financing || null,
+    menuFinal:        menuFinal || null,
+    responseFormatVersion: 2,
   });
 
   return docRef.id;
+}
+
+/**
+ * Mise à jour d’une présentation (ex. menuFinal après l’écran menu).
+ * @param {string} presId
+ * @param {object} data
+ */
+export async function updatePresentation(presId, data) {
+  if (!presId) throw new Error('presId is required');
+  const ref = doc(db, 'presentations', presId);
+  await updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
+}
+
+/**
+ * Publie un aperçu public (lecture) pour le lien /t/:token
+ * @param {string} token
+ * @param {object} snapshot — véhicule, responses, financing, timePerProduit, optionnel
+ */
+export async function publishPublicSnapshot(token, snapshot) {
+  if (!token) throw new Error('token is required');
+  const ref = doc(db, 'publicPresentationTokens', token);
+  await setDoc(
+    ref,
+    { ...snapshot, createdAt: serverTimestamp() },
+    { merge: true },
+  );
+}
+
+export async function getPublicSnapshot(token) {
+  if (!token) return null;
+  const s = await getDoc(doc(db, 'publicPresentationTokens', token));
+  if (!s.exists()) return null;
+  return s.data();
 }
 
 /* ═══════════════════════════════════════
@@ -109,12 +167,22 @@ export async function getUserStats(userId) {
    COMPUTE ANALYTICS from array of presentations
    ═══════════════════════════════════════ */
 export function computeAnalytics(presentations) {
-  if (!presentations.length) return { total: 0, avgRate: 0, productStats: {}, byMonth: {} };
+  if (!presentations.length) {
+    return {
+      total: 0, avgRate: 0, productStats: {}, byMonth: {}, menuChoiceMix: { essentiel: 0, recommande: 0, premium: 0 },
+    };
+  }
 
   const total   = presentations.length;
   const avgRate = Math.round(
     presentations.reduce((s, p) => s + (p.protectionRate || 0), 0) / total
   );
+
+  const menuChoiceMix = { essentiel: 0, recommande: 0, premium: 0 };
+  presentations.forEach((p) => {
+    const c = p.menuFinal?.clientChoice;
+    if (c && c in menuChoiceMix) menuChoiceMix[c]++;
+  });
 
   /* Per-product aggregated stats */
   const productStats = {};
@@ -122,7 +190,7 @@ export function computeAnalytics(presentations) {
     Object.entries(p.responses || {}).forEach(([pid, resp]) => {
       if (!productStats[pid]) productStats[pid] = { yes: 0, no: 0, total: 0, timeTotal: 0 };
       productStats[pid].total++;
-      if (resp === 'yes') productStats[pid].yes++;
+      if (getInterest(resp) === 'yes') productStats[pid].yes++;
       else productStats[pid].no++;
       if (p.timePerProduct?.[pid]) productStats[pid].timeTotal += p.timePerProduct[pid];
     });
@@ -139,5 +207,5 @@ export function computeAnalytics(presentations) {
     byMonth[key].totalRate += p.protectionRate || 0;
   });
 
-  return { total, avgRate, productStats, byMonth };
+  return { total, avgRate, productStats, byMonth, menuChoiceMix };
 }

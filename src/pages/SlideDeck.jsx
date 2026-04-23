@@ -1,126 +1,82 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePresentation } from '../context/PresentationContext';
 import { useAuth } from '../context/AuthContext';
-import { PRODUCTS } from '../data/products';
-import { savePresentation } from '../services/presentationService';
-import { X, ChevronLeft, ChevronRight, Clock, Printer, Check, ThumbsDown, HelpCircle } from 'lucide-react';
+import { CHAPTERS } from '../data/products';
+import { ENRICHED_PRODUCTS } from '../data/productPricing';
+import { loadDealerSettings } from '../services/settingsService';
+import { savePresentation, upsertDraft } from '../services/presentationService';
+import { getInterest, buildResponseV2Entry } from '../utils/responseHelpers';
+import { getEnrichedById, resolvePriceCents } from '../utils/pricingResolver.js';
+import { X, Clock, Keyboard, Check } from 'lucide-react';
 
-/* ═══════════════════════════════════════════
-   HOTSPOT DOT — Bleu pulsant (style v1)
-   ═══════════════════════════════════════════ */
-function VehicleDot({ dot, isActive, onClick }) {
-  const dotColor = dot.color || '#3B82F6';
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        position: 'absolute',
-        top: dot.top, left: dot.left,
-        transform: 'translate(-50%, -50%)',
-        zIndex: 10, cursor: 'pointer',
-      }}
-    >
-      <div style={{
-        position: 'absolute', top: '50%', left: '50%',
-        width: 36, height: 36, borderRadius: '50%',
-        border: `2px solid ${dotColor}`,
-        animation: isActive ? 'none' : 'pulse-ring 2s ease-out infinite',
-        opacity: isActive ? 0 : 0.6,
-        pointerEvents: 'none',
-      }} />
-      <div style={{
-        width: 18, height: 18, borderRadius: '50%',
-        background: dotColor,
-        border: '2.5px solid white',
-        boxShadow: `0 0 0 2px ${dotColor}44, 0 2px 8px rgba(0,0,0,0.2)`,
-        animation: isActive ? 'none' : 'pulse-dot 2s ease-out infinite',
-        transform: isActive ? 'scale(1.2)' : 'scale(1)',
-        transition: 'transform 0.2s',
-      }} />
-    </div>
-  );
-}
+import BreadcrumbProduct from '../components/slide/BreadcrumbProduct';
+import SlideQuadrant from '../components/slide/SlideQuadrant';
+import VehicleImage from '../components/slide/VehicleImage';
+import HotspotChips, { HotspotDetailPanel } from '../components/slide/HotspotChips';
+import DecisionBar from '../components/slide/DecisionBar';
+import TierSelector from '../components/slide/TierSelector';
+import Dialog from '../components/ui/Dialog';
+import Button from '../components/ui/Button';
+import Kbd from '../components/ui/Kbd';
+import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts';
+import useMinimumSlideTime from '../hooks/useMinimumSlideTime';
+import { currencyMonthly } from '../utils/typograph';
 
-/* ═══════════════════════════════════════════
-   HOTSPOT MODAL — Clean et minimal
-   ═══════════════════════════════════════════ */
-function HotspotModal({ dot, onClose }) {
-  if (!dot) return null;
-  return (
-    <div style={{
-      position: 'absolute', top: '50%', left: '50%',
-      transform: 'translate(-50%, -50%)',
-      background: 'white', borderRadius: '16px',
-      padding: '1.25rem',
-      boxShadow: '0 16px 48px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.08)',
-      zIndex: 20, width: 260,
-      animation: 'hotspotModalIn 0.2s ease both',
-      border: '1px solid rgba(0,0,0,0.04)',
-    }}>
-      <button onClick={onClose} style={{
-        position: 'absolute', top: 10, right: 10,
-        background: '#F5F5F5', border: 'none',
-        borderRadius: '50%', width: 24, height: 24,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        cursor: 'pointer', padding: 0, transition: 'background 0.15s',
-      }}
-        onMouseEnter={e => e.currentTarget.style.background = '#EEEEEE'}
-        onMouseLeave={e => e.currentTarget.style.background = '#F5F5F5'}
-      >
-        <X size={12} color="#757575" />
-      </button>
-      {dot.image && (
-        <img src={dot.image} alt={dot.label}
-          style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: '10px', marginBottom: '0.875rem' }} />
-      )}
-      <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.3rem', color: '#1A1A1A' }}>{dot.label}</div>
-      <div style={{ fontSize: '0.8rem', color: '#757575', lineHeight: 1.55, marginBottom: '0.75rem' }}>
-        {dot.description}
-      </div>
-      {dot.cost && (
-        <div style={{
-          padding: '0.45rem 0.7rem', borderRadius: '8px',
-          background: 'rgba(214,40,40,0.04)',
-          border: '1px solid rgba(214,40,40,0.1)',
-          display: 'flex', gap: '0.4rem', alignItems: 'center',
-        }}>
-          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#D62828', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Coût estimé</span>
-          <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#D62828' }}>{dot.cost}</span>
-        </div>
-      )}
-    </div>
-  );
-}
+import PresentationSummary from './PresentationSummary';
+import MenuSelling from './MenuSelling';
 
-/* ═══════════════════════════════════════════
-   MAIN SLIDE DECK
-   ═══════════════════════════════════════════ */
+const MIN_SLIDE_SECONDS = parseInt(
+  typeof window !== 'undefined' ? (localStorage.getItem('ap_min_slide') || '0') : '0', 10,
+) || 0;
+
 export default function SlideDeck() {
-  const navigate    = useNavigate();
-  const { vehicle, clientName, condition, transactionType, clearSession, mode } = usePresentation();
+  const navigate = useNavigate();
+  const {
+    vehicle, clientName, transactionType, clearSession, mode, financing, responses, setResponses,
+    dealerSettingsSnapshot, setDealerSettingsSnapshot, updateResponse,
+  } = usePresentation();
   const { currentUser, userProfile, isDemo } = useAuth();
 
-  const [products, setProducts] = useState(PRODUCTS);
-  const [index,    setIndex]    = useState(0);
-  const [responses,setResponses]= useState({});
-  const [activeHot,setActiveHot]= useState(null);
-  const [saving,   setSaving]   = useState(false);
-  const [done,     setDone]     = useState(false);
-  const [showPrint,setShowPrint]= useState(false);
+  const [products]        = useState(ENRICHED_PRODUCTS);
+  const [index, setIndex] = useState(0);
+  const [activeHot, setActiveHot] = useState(null);
+  const [saving, setSaving]       = useState(false);
+  /** slides | menu | summary */
+  const [postDeck, setPostDeck]   = useState(/** @type {'slides'|'menu'|'summary'} */ ('slides'));
+  const [presId, setPresId]       = useState(/** @type {string|null} */ (null));
+  const [showQuit, setShowQuit]   = useState(false);
+  const [showHelp, setShowHelp]   = useState(false);
 
-  const [slideTime,  setSlideTime]   = useState(0);
-  const [timePerProd,setTimePerProd] = useState({});
+  const [slideTime, setSlideTime] = useState(0);
+  const [timePerProd, setTimePerProd] = useState({});
   const timerRef = useRef(null);
+  const mountedAt = useRef(Date.now());
+  const draftId = useRef(`draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
   const product = products[index];
   const total   = products.length;
+  const interestLevel = getInterest(responses[product?.id]);
+  const percent  = Math.round(((index + 1) / total) * 100);
+  const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
+  useEffect(() => {
+    (async () => {
+      if (!userProfile?.dealerId) return;
+      const s = await loadDealerSettings(userProfile.dealerId);
+      setDealerSettingsSnapshot(s);
+    })();
+  }, [userProfile?.dealerId, setDealerSettingsSnapshot]);
+
+  /* ── Timer slide ── */
   useEffect(() => {
     setSlideTime(0);
     timerRef.current = setInterval(() => setSlideTime(t => t + 1), 1000);
     return () => clearInterval(timerRef.current);
   }, [index]);
+
+  /* ── Gate temps minimum ── */
+  const { fraction: gateFraction, canProceed } = useMinimumSlideTime(MIN_SLIDE_SECONDS, index);
 
   const saveSlideTime = useCallback(() => {
     clearInterval(timerRef.current);
@@ -132,481 +88,527 @@ export default function SlideDeck() {
     }
   }, [product, slideTime]);
 
-  const goNext = () => {
-    saveSlideTime();
-    if (index < total - 1) { setIndex(i => i+1); setActiveHot(null); }
-    else handleFinish();
-  };
-
-  const goPrev = () => {
-    saveSlideTime();
-    if (index > 0) { setIndex(i => i-1); setActiveHot(null); }
-  };
-
-  const respond = (resp) => {
-    setResponses(r => ({ ...r, [product.id]: resp }));
-    saveSlideTime();
-    if (index < total - 1) { setIndex(i => i+1); setActiveHot(null); }
-    else handleFinish();
-  };
-
-  const handleFinish = async () => {
-    const finalTime = { ...timePerProd, [product.id]: (timePerProd[product.id] || 0) + slideTime };
+  const handleFinish = useCallback(async (finalResp) => {
+    const resp = finalResp || responses;
+    const finalTime = { ...timePerProd, [product?.id]: (timePerProd[product?.id] || 0) + slideTime };
     if (!isDemo && currentUser) {
       setSaving(true);
       try {
-        await savePresentation(
+        const id = await savePresentation(
           currentUser.uid,
           userProfile?.dealerId || null,
-          vehicle || {},
-          responses,
+          { ...(vehicle || {}), clientName: clientName || '' },
+          resp,
           mode || 'live',
           finalTime,
+          financing,
+          null,
         );
+        if (id) setPresId(id);
       } catch (e) { console.error('Save error:', e); }
       finally { setSaving(false); }
     }
-    setDone(true);
+    setPostDeck('menu');
+  }, [responses, timePerProd, product, slideTime, isDemo, currentUser, userProfile, vehicle, clientName, mode, financing]);
+
+  const goNext = useCallback(() => {
+    if (!canProceed) return;
+    saveSlideTime();
+    if (index < total - 1) { setIndex(i => i + 1); setActiveHot(null); }
+    else { void handleFinish(); }
+  }, [canProceed, saveSlideTime, index, total, handleFinish]);
+
+  const goPrev = useCallback(() => {
+    saveSlideTime();
+    if (index > 0) { setIndex(i => i - 1); setActiveHot(null); }
+  }, [saveSlideTime, index]);
+
+  const respond = useCallback((resp) => {
+    if (!product) return;
+    saveSlideTime();
+    setResponses((prev) => {
+      const prevR   = prev[product.id];
+      const entry   = buildResponseV2Entry(prevR, product, resp, dealerSettingsSnapshot);
+      const newResponses = { ...prev, [product.id]: entry };
+
+      if (!isDemo && currentUser) {
+        upsertDraft(draftId.current, {
+          userId:   currentUser.uid,
+          dealerId: userProfile?.dealerId || null,
+          clientName: clientName || '',
+          vehicle:  vehicle || {},
+          responses:  newResponses,
+          mode:       mode || 'live',
+          progress:   { index: index + 1, total },
+          financing:  financing || null,
+        });
+      }
+
+      setTimeout(() => {
+        if (index < total - 1) { setIndex((i) => i + 1); setActiveHot(null); }
+        else { void handleFinish(newResponses); }
+      }, 320);
+      return newResponses;
+    });
+  }, [product, setResponses, saveSlideTime, isDemo, currentUser, userProfile, clientName, vehicle, mode, index, total, handleFinish, dealerSettingsSnapshot, financing]);
+
+  const handleQuit = () => {
+    const decided = Object.keys(responses).length;
+    if (decided > 0 && decided < total) {
+      setShowQuit(true);
+    } else {
+      clearSession();
+      navigate('/dashboard');
+    }
   };
 
-  const handleQuit = () => { clearSession(); navigate('/dashboard'); };
+  const confirmQuit = () => { clearSession(); navigate('/dashboard'); };
 
-  if (showPrint) return <PrintSummary vehicle={vehicle} clientName={clientName} responses={responses} products={products} onBack={() => setShowPrint(false)} onQuit={handleQuit} />;
-  if (done) return <DoneScreen vehicle={vehicle} clientName={clientName} responses={responses} products={products} saving={saving} onPrint={() => setShowPrint(true)} onQuit={handleQuit} />;
+  /* ── Raccourcis clavier ── */
+  const bindings = useMemo(() => ({
+    'ArrowLeft':  () => goPrev(),
+    'ArrowRight': () => goNext(),
+    'v': () => respond('yes'),
+    'V': () => respond('yes'),
+    'r': () => respond('no'),
+    'R': () => respond('no'),
+    'Escape': () => setShowHelp(false),
+    '?': () => setShowHelp(s => !s),
+    'f': () => { if (document.fullscreenEnabled) {
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    }},
+  }), [goPrev, goNext, respond]);
+  useKeyboardShortcuts(bindings, postDeck === 'slides' && !showQuit);
+
+  /* ── Préchargement image véhicule ── */
+  useEffect(() => {
+    if (vehicle?.make && vehicle?.model) {
+      const img = new Image();
+      img.src = `https://cdn.imagin.studio/getimage?customer=img&make=${encodeURIComponent(vehicle.make)}&modelFamily=${encodeURIComponent(vehicle.model)}&modelYear=${vehicle.year || new Date().getFullYear()}&angle=23&width=900`;
+    }
+  }, [vehicle]);
+
+  if (postDeck === 'summary') {
+    return (
+      <PresentationSummary
+        vehicle={vehicle}
+        clientName={clientName}
+        responses={responses}
+        products={products}
+        timePerProd={timePerProd}
+        saving={saving}
+        onQuit={confirmQuit}
+      />
+    );
+  }
+  if (postDeck === 'menu') {
+    return (
+      <MenuSelling
+        presId={presId}
+        timePerProduct={timePerProd}
+        onComplete={() => setPostDeck('summary')}
+        onBack={() => { clearSession(); navigate('/dashboard'); }}
+      />
+    );
+  }
   if (!product) return null;
 
-  useEffect(() => {
-    const handleKey = (e) => {
-      if (e.key === 'ArrowLeft')  goPrev();
-      if (e.key === 'ArrowRight') goNext();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  });
+  const rawProductResp = responses[product.id];
+  const tierIdFromResp
+    = typeof rawProductResp === 'object' && rawProductResp ? rawProductResp.tierId : undefined;
 
-  const interest = responses[product?.id];
-  const percent  = Math.round(((index + 1) / total) * 100);
-  const fmt      = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  const chapter = CHAPTERS?.[product.chapter]?.label;
+  const watermark = CHAPTERS?.[product.chapter]?.numeral || String(index + 1).padStart(2, '0');
+  const dots = product.vehicle_dots || [];
+
+  /* Points bullets : couleurs sémantiques */
+  const riskPoints = product.risk?.points || [];
+  const solutionPoints = product.solution?.points || [];
+
+  /* Prix mensuel widget */
+  const showPrice = product.monthly_price && transactionType !== 'comptant';
 
   return (
-    <div className="app-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Topbar — blanc clean */}
-      <header className="topbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 500 }}>
-            {clientName || 'Client'} &nbsp;·&nbsp;
-            <span style={{ color: 'var(--text-tertiary)' }}>{vehicle?.year} {vehicle?.make} {vehicle?.model}</span>
+    <div
+      className="slide-deck"
+      style={{
+        minHeight: '100vh',
+        display: 'grid',
+        gridTemplateRows: '56px 48px 1fr 96px',
+        background: 'var(--bg-page)',
+        color: 'var(--text-primary)',
+      }}
+    >
+      {/* ─── Topbar 56px ─── */}
+      <header
+        className="topbar"
+        style={{ height: 56, position: 'relative', zIndex: 2 }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', flex: 1, minWidth: 0 }}>
+          <span style={{
+            fontFamily: 'var(--font-display)',
+            fontStyle: 'italic',
+            fontSize: 'var(--fs-md)',
+            color: 'var(--text-primary)',
+            fontWeight: 500,
+          }}>Avantage <span style={{ color: 'var(--or-700)' }}>Plus</span></span>
+          <span className="topbar-divider" />
+          <div style={{
+            color: 'var(--text-secondary)',
+            fontSize: 'var(--fs-xs)',
+            fontWeight: 500,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            minWidth: 0,
+          }}>
+            {clientName || 'Client anonyme'}
+            <span style={{ margin: '0 0.5rem', color: 'var(--border-md)' }}>·</span>
+            <span style={{ color: 'var(--text-tertiary)' }}>
+              {vehicle?.year} {vehicle?.make} {vehicle?.model}
+            </span>
           </div>
-          <div style={{ flex: 1, maxWidth: 300 }}>
-            <div className="progress-bar" style={{ height: 4 }}>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)',
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            <Clock size={12} /> {fmt(slideTime)}
+          </div>
+          <div style={{ width: 160 }}>
+            <div className="progress-bar" style={{ height: 3 }}>
               <div className="progress-fill" style={{ width: `${percent}%` }} />
             </div>
           </div>
-          <span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', fontWeight: 600 }}>
-            {index+1}/{total}
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '1rem' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '0.35rem',
-            color: 'var(--text-tertiary)', fontSize: '0.775rem',
+          <span style={{
+            color: 'var(--text-tertiary)',
+            fontSize: 'var(--fs-xs)',
+            fontWeight: 600,
+            fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '0.04em',
           }}>
-            <Clock size={13} /> {fmt(slideTime)}
-          </div>
-          <button className="topbar-btn danger" onClick={handleQuit}>Quitter</button>
+            {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Keyboard size={14} />}
+            onClick={() => setShowHelp(true)}
+            aria-label="Raccourcis clavier"
+          >
+            <Kbd>?</Kbd>
+          </Button>
+          <Button variant="ghost" size="sm" icon={<X size={14} />} onClick={handleQuit}>
+            Quitter
+          </Button>
         </div>
       </header>
 
-      {/* Slide */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Slide header */}
-        <div style={{
-          padding: '0.75rem 2.5rem',
-          background: '#FFFFFF',
-          borderBottom: '1px solid var(--border-sm)',
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-        }}>
-          <span style={{ fontSize: '1.35rem' }}>{product.icon}</span>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-            {product.title}
-          </h2>
-          {interest && (
-            <span className={`badge ${interest === 'yes' ? 'badge-green' : interest === 'maybe' ? 'badge-amber' : 'badge-red'}`} style={{ marginLeft: 'auto' }}>
-              {interest === 'yes' ? 'Intéressé' : interest === 'maybe' ? 'En savoir plus' : 'Pas intéressé'}
-            </span>
+      {/* ─── Breadcrumb 48px ─── */}
+      <BreadcrumbProduct
+        product={product}
+        interest={interestLevel}
+        chapter={chapter}
+        index={index}
+        total={total}
+      />
+
+      {/* ─── Quadrants (grille 2x2) ─── */}
+      <div
+        key={product.id}
+        className="slide-grid animate-up"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          minHeight: 0,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Q1 : Hook (haut-gauche) */}
+        <SlideQuadrant watermark={watermark}>
+          <span className="overline" style={{ marginBottom: '0.75rem' }}>
+            Accroche
+          </span>
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontStyle: 'italic',
+            fontWeight: 500,
+            fontSize: 'clamp(1.75rem, 2.2vw, 2.125rem)',
+            lineHeight: 1.15,
+            letterSpacing: '-0.015em',
+            color: 'var(--text-primary)',
+            margin: 0,
+          }}>
+            {product.hook?.headline}
+          </h1>
+          {product.hook?.text && (
+            <p style={{
+              marginTop: '1rem',
+              fontSize: 'clamp(1rem, 1.15vw, 1.125rem)',
+              lineHeight: 1.7,
+              color: 'var(--text-secondary)',
+              maxWidth: '52ch',
+            }}>
+              {product.hook.text}
+            </p>
           )}
-        </div>
 
-        {/* Slide body — layout magazine */}
-        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-          {/* Left: text content — flowing, readable */}
-          <div style={{
-            flex: '1 1 55%', padding: '2rem 2.5rem', overflow: 'auto',
-            display: 'flex', flexDirection: 'column',
-          }}>
-            {/* Hook headline */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{
-                fontWeight: 800, fontSize: '1.2rem', color: 'var(--text-primary)',
-                lineHeight: 1.35, marginBottom: '0.75rem',
-                fontFamily: 'Plus Jakarta Sans, sans-serif',
-              }}>
-                {product.emoji_hook} {product.hook.headline}
-              </div>
-              <p style={{
-                fontSize: '0.95rem', lineHeight: 1.8, color: 'var(--text-secondary)', margin: 0,
-              }}>
-                {product.hook.text}
-              </p>
+          {product.presenter_note && (
+            <div
+              className="presenter-note"
+              style={{
+                marginTop: 'auto',
+                padding: '0.7rem 0.9rem',
+                background: 'var(--or-100)',
+                border: '1px dashed var(--border-warm)',
+                borderRadius: 'var(--r-sm)',
+                fontSize: 'var(--fs-xs)',
+                color: 'var(--or-900)',
+                lineHeight: 1.5,
+                fontStyle: 'italic',
+              }}
+            >
+              <strong style={{ fontStyle: 'normal', fontWeight: 600 }}>Note directeur —</strong>{' '}
+              {product.presenter_note}
             </div>
+          )}
+        </SlideQuadrant>
 
-            {/* Risk section */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{
-                fontWeight: 700, fontSize: '0.9rem', color: 'var(--danger)',
-                marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem',
-              }}>
-                {product.emoji_risk} La réalité sans protection :
-              </div>
-              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                {product.risk.points.map((p, i) => (
-                  <li key={i} style={{
-                    fontSize: '0.9rem', color: 'var(--text-secondary)',
-                    marginBottom: '0.3rem', lineHeight: 1.65,
-                  }}>
-                    {p}
+        {/* Q2 : Véhicule (haut-droite, ANCRAGE FIXE) */}
+        <SlideQuadrant variant="subtle" style={{ padding: '1.25rem 1.5rem' }}>
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: 0,
+            position: 'relative',
+          }}>
+            <div style={{ width: '100%', height: '100%', maxWidth: 520, maxHeight: '100%' }}>
+              <VehicleImage
+                year={vehicle?.year}
+                make={vehicle?.make}
+                model={vehicle?.model}
+                category={vehicle?.category}
+                angle={23}
+                width={900}
+                alt={`${vehicle?.year || ''} ${vehicle?.make || ''} ${vehicle?.model || ''}`}
+              />
+            </div>
+          </div>
+          {dots.length > 0 && (
+            <div style={{ marginTop: '0.5rem' }}>
+              <HotspotChips
+                dots={dots}
+                activeIndex={activeHot}
+                onSelect={setActiveHot}
+              />
+            </div>
+          )}
+        </SlideQuadrant>
+
+        {/* Q3 : Risque sans protection (bas-gauche) */}
+        <SlideQuadrant variant="default" style={{ background: 'var(--ivoire-50)' }}>
+          <span className="overline" style={{ color: 'var(--crimson-500)', marginBottom: '0.5rem' }}>
+            Sans protection
+          </span>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {riskPoints.map((p, i) => (
+              <li
+                key={i}
+                className="slide-bullet"
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                  fontSize: 'clamp(1rem, 1.2vw, 1.1875rem)',
+                  lineHeight: 1.55,
+                  color: 'var(--text-primary)',
+                  fontVariantNumeric: 'tabular-nums',
+                  animation: `fadeUp 0.4s var(--ease-out) both`,
+                  animationDelay: `${60 + i * 60}ms`,
+                }}
+              >
+                <span aria-hidden style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 22, height: 22,
+                  marginTop: 4,
+                  borderRadius: '50%',
+                  background: 'var(--danger-light)',
+                  color: 'var(--crimson-500)',
+                  fontSize: 11, fontWeight: 700,
+                  border: '1px solid var(--danger-border)',
+                }}>×</span>
+                <span>{p}</span>
+              </li>
+            ))}
+          </ul>
+        </SlideQuadrant>
+
+        {/* Q4 : Solution + prix mensuel (bas-droite) */}
+        <SlideQuadrant variant="default">
+          {activeHot !== null && dots[activeHot] ? (
+            <HotspotDetailPanel
+              dot={dots[activeHot]}
+              onClose={() => setActiveHot(null)}
+            />
+          ) : (
+            <>
+              <span className="overline" style={{ color: 'var(--forest-600)', marginBottom: '0.5rem' }}>
+                Avec Avantage Plus
+              </span>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {solutionPoints.map((p, i) => (
+                  <li
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                      fontSize: 'clamp(1rem, 1.2vw, 1.1875rem)',
+                      lineHeight: 1.55,
+                      color: 'var(--text-primary)',
+                      animation: `fadeUp 0.4s var(--ease-out) both`,
+                      animationDelay: `${60 + i * 60}ms`,
+                    }}
+                  >
+                    <span aria-hidden style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: 22, height: 22,
+                      marginTop: 4,
+                      borderRadius: '50%',
+                      background: 'var(--brand-green-light)',
+                      color: 'var(--forest-600)',
+                      border: '1px solid var(--brand-green-border)',
+                    }}>
+                      <Check size={12} strokeWidth={3} />
+                    </span>
+                    <span>{p}</span>
                   </li>
                 ))}
               </ul>
-            </div>
 
-            {/* Solution section */}
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{
-                fontWeight: 700, fontSize: '0.9rem', color: 'var(--success)',
-                marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem',
-              }}>
-                {product.emoji_solution} Ce que vous obtenez :
-              </div>
-              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                {product.solution.points.map((p, i) => (
-                  <li key={i} style={{
-                    fontSize: '0.9rem', color: 'var(--text-secondary)',
-                    marginBottom: '0.3rem', lineHeight: 1.65,
+              <TierSelector
+                product={product}
+                dealerSettings={dealerSettingsSnapshot}
+                tierId={tierIdFromResp}
+                onChange={(tid, gId) => {
+                  const e = getEnrichedById(product.id) || product;
+                  const pc = resolvePriceCents(e, dealerSettingsSnapshot, tid, gId);
+                  updateResponse(product.id, { tierId: tid, priceCents: pc });
+                }}
+              />
+
+              {showPrice && (
+                <div style={{
+                  marginTop: 'auto',
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  padding: '0.85rem 1rem',
+                  borderTop: '1px solid var(--border-hair)',
+                  background: 'linear-gradient(180deg, transparent, var(--or-100))',
+                  borderRadius: 'var(--r-sm)',
+                }}>
+                  <span className="overline" style={{ marginBottom: 0, color: 'var(--or-900)' }}>
+                    Estimation{transactionType === 'location' ? ' (location)' : ''}
+                  </span>
+                  <span style={{
+                    fontFamily: 'var(--font-display)',
+                    fontStyle: 'italic',
+                    fontWeight: 600,
+                    fontSize: 'clamp(1.5rem, 2.2vw, 2rem)',
+                    color: 'var(--text-primary)',
+                    fontVariantNumeric: 'tabular-nums',
+                    letterSpacing: '-0.01em',
                   }}>
-                    {p}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {product.customContent && (
-              <div style={{
-                marginTop: '0.5rem', padding: '1rem 1.25rem',
-                background: 'var(--bg-subtle)', borderRadius: 'var(--r-md)',
-                border: '1px solid var(--border-sm)',
-                fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.7,
-              }}>
-                {product.customContent}
-              </div>
-            )}
-            {product.customImage && (
-              <img src={product.customImage} alt=""
-                style={{ width: '100%', borderRadius: 'var(--r-md)', marginTop: '1rem', objectFit: 'cover', maxHeight: 180 }} />
-            )}
-          </div>
-
-          {/* Right: vehicle — large, centered */}
-          <div style={{
-            flex: '0 0 45%', position: 'relative',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '1.5rem 2rem',
-            background: '#FAFAFA',
-            borderLeft: '1px solid var(--border-sm)',
-          }}>
-            {vehicle?.make ? (
-              <div style={{ position: 'relative', width: '100%', maxWidth: 600 }}>
-                <img
-                  src={`https://cdn.imagin.studio/getimage?customer=img&make=${encodeURIComponent(vehicle.make)}&modelFamily=${encodeURIComponent(vehicle.model||'')}&modelYear=${vehicle.year||2024}&angle=23&width=900`}
-                  alt={`${vehicle.year} ${vehicle.make}`}
-                  style={{ width: '100%', objectFit: 'contain', display: 'block' }}
-                  onError={e => { e.target.src = 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=900&q=80'; }}
-                />
-                {product.vehicle_dots?.map((dot, i) => (
-                  <VehicleDot
-                    key={i} dot={dot}
-                    isActive={activeHot === i}
-                    onClick={() => setActiveHot(j => j === i ? null : i)}
-                  />
-                ))}
-                {activeHot !== null && product.vehicle_dots?.[activeHot] && (
-                  <HotspotModal
-                    dot={product.vehicle_dots[activeHot]}
-                    onClose={() => setActiveHot(null)}
-                  />
-                )}
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '2rem' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🚗</div>
-                <div>Aucun véhicule sélectionné</div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Decision bar */}
-        <div style={{
-          padding: '0.75rem 2rem',
-          background: 'white',
-          borderTop: '1px solid var(--border-sm)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <button className="btn-ghost" onClick={goPrev} disabled={index === 0}
-            style={{ opacity: index === 0 ? 0.3 : 1, minWidth: 110 }}>
-            <ChevronLeft size={16} /> Précédent
-          </button>
-
-          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', justifyContent: 'center' }}>
-            {/* Pas intéressé */}
-            <button
-              onClick={() => respond('no')}
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem',
-                background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem 0.75rem',
-                transition: 'var(--tx)',
-              }}
-            >
-              <div style={{
-                width: 44, height: 44, borderRadius: '50%',
-                background: interest === 'no' ? 'var(--danger)' : 'white',
-                border: `3px solid ${interest === 'no' ? 'var(--danger)' : 'rgba(220,38,38,0.3)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'var(--tx)',
-                boxShadow: interest === 'no' ? '0 4px 12px rgba(220,38,38,0.3)' : 'none',
-              }}>
-                <ThumbsDown size={18} color={interest === 'no' ? 'white' : '#DC2626'} />
-              </div>
-              <span style={{
-                fontSize: '0.7rem', fontWeight: 600, color: 'var(--danger)',
-                letterSpacing: '0.01em',
-              }}>Pas intéressé</span>
-            </button>
-
-            {/* En savoir plus */}
-            <button
-              onClick={() => respond('maybe')}
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem',
-                background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem 0.75rem',
-                transition: 'var(--tx)',
-              }}
-            >
-              <div style={{
-                width: 44, height: 44, borderRadius: '50%',
-                background: interest === 'maybe' ? 'var(--warning)' : 'white',
-                border: `3px solid ${interest === 'maybe' ? 'var(--warning)' : 'rgba(217,119,6,0.3)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'var(--tx)',
-                boxShadow: interest === 'maybe' ? '0 4px 12px rgba(217,119,6,0.3)' : 'none',
-              }}>
-                <HelpCircle size={18} color={interest === 'maybe' ? 'white' : '#D97706'} />
-              </div>
-              <span style={{
-                fontSize: '0.7rem', fontWeight: 600, color: 'var(--warning)',
-                letterSpacing: '0.01em',
-              }}>En savoir plus</span>
-            </button>
-
-            {/* Intéressé */}
-            <button
-              onClick={() => respond('yes')}
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem',
-                background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem 0.75rem',
-                transition: 'var(--tx)',
-              }}
-            >
-              <div style={{
-                width: 44, height: 44, borderRadius: '50%',
-                background: interest === 'yes' ? '#059669' : 'white',
-                border: `3px solid ${interest === 'yes' ? '#059669' : 'rgba(5,150,105,0.3)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'var(--tx)',
-                boxShadow: interest === 'yes' ? '0 4px 12px rgba(5,150,105,0.3)' : 'none',
-              }}>
-                <Check size={18} color={interest === 'yes' ? 'white' : '#059669'} />
-              </div>
-              <span style={{
-                fontSize: '0.7rem', fontWeight: 600, color: 'var(--success)',
-                letterSpacing: '0.01em',
-              }}>Intéressé</span>
-            </button>
-          </div>
-
-          <button className="btn-ghost" onClick={goNext} style={{ minWidth: 110 }}>
-            {index < total - 1 ? <>Suivant <ChevronRight size={16} /></> : 'Terminer →'}
-          </button>
-        </div>
+                    {currencyMonthly(product.monthly_price)}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+        </SlideQuadrant>
       </div>
 
+      {/* ─── Decision bar 96px ─── */}
+      <DecisionBar
+        interest={interestLevel}
+        onYes={() => respond('yes')}
+        onNo={() => respond('no')}
+        onPrev={index > 0 ? goPrev : null}
+        onNext={goNext}
+        canProceed={canProceed}
+        isLast={index === total - 1}
+        gateFraction={gateFraction}
+      />
+
+      {/* ─── Help overlay ─── */}
+      <Dialog
+        open={showHelp}
+        onOpenChange={setShowHelp}
+        title="Raccourcis clavier"
+        description="Naviguez au clavier pour une présentation fluide."
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem 2rem', fontSize: 'var(--fs-sm)' }}>
+          <Row k="V" label="Important" />
+          <Row k="R" label="Pas important" />
+          <Row k="←" label="Produit précédent" />
+          <Row k="→" label="Produit suivant" />
+          <Row k="F" label="Plein écran" />
+          <Row k="?" label="Afficher cette aide" />
+          <Row k="Esc" label="Fermer" />
+        </div>
+      </Dialog>
+
+      {/* ─── Confirm quit ─── */}
+      <Dialog
+        open={showQuit}
+        onOpenChange={setShowQuit}
+        title="Quitter la présentation ?"
+        description={`Vous avez décidé ${Object.keys(responses).length}/${total} produits. Votre progression ne sera pas sauvegardée comme présentation complète.`}
+        footer={(
+          <>
+            <Button variant="ghost" onClick={() => setShowQuit(false)}>Continuer</Button>
+            <Button variant="danger" onClick={confirmQuit}>Quitter</Button>
+          </>
+        )}
+      />
+
       <style>{`
-        @keyframes hotspotModalIn {
-          from { opacity: 0; transform: translate(-50%,-50%) scale(0.92); }
-          to   { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+        @media (max-width: 960px) {
+          .slide-grid {
+            grid-template-columns: 1fr !important;
+            grid-template-rows: auto auto auto auto !important;
+          }
+        }
+        .slide-deck .slide-grid > section {
+          border-right: 1px solid var(--border-hair);
+          border-bottom: 1px solid var(--border-hair);
+        }
+        .slide-deck .slide-grid > section:nth-child(2n),
+        .slide-deck .slide-grid > section:nth-last-child(-n+2) {
+          /* nothing special, but keeps dividers */
         }
       `}</style>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════════
-   DONE SCREEN — Clean et aéré
-   ═══════════════════════════════════════════ */
-function DoneScreen({ vehicle, clientName, responses, products, saving, onPrint, onQuit }) {
-  const interested = products.filter(p => responses[p.id] === 'yes');
-  const maybe      = products.filter(p => responses[p.id] === 'maybe');
-  const declined   = products.filter(p => responses[p.id] === 'no');
-  const rate       = products.length > 0 ? Math.round((interested.length / products.length) * 100) : 0;
-
+function Row({ k, label }) {
   return (
-    <div className="app-container">
-      <header className="topbar">
-        <span className="topbar-logo">Avantage <span>Plus</span><span className="topbar-badge">FNI·AI</span></span>
-        <div className="topbar-actions">
-          <button className="topbar-btn" onClick={onPrint}><Printer size={14} /> Imprimer</button>
-          <button className="topbar-btn danger" onClick={onQuit}><X size={14} /> Fermer</button>
-        </div>
-      </header>
-      <main className="main-content" style={{ maxWidth: 720 }}>
-        <div className="card" style={{ textAlign: 'center', padding: '2.5rem', marginBottom: '1.25rem' }}>
-          <h1 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>
-            Présentation terminée
-          </h1>
-          <p style={{ color: 'var(--text-tertiary)', margin: 0 }}>
-            {clientName
-              ? `${clientName} — ${vehicle?.year} ${vehicle?.make} ${vehicle?.model}`
-              : `${vehicle?.year || ''} ${vehicle?.make || ''} ${vehicle?.model || ''}`}
-          </p>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-            margin: '1.75rem 0',
-            padding: '0.75rem 1.5rem',
-            background: rate >= 60 ? 'var(--success-light)' : rate >= 30 ? 'var(--warning-light)' : 'var(--brand-red-light)',
-            borderRadius: 'var(--r-full)',
-            border: `1px solid ${rate >= 60 ? 'var(--success-border)' : rate >= 30 ? 'var(--warning-border)' : 'var(--brand-red-border)'}`,
-          }}>
-            <span style={{
-              fontSize: '1.75rem', fontWeight: 800,
-              color: rate >= 60 ? 'var(--success)' : rate >= 30 ? 'var(--warning)' : 'var(--brand-red)',
-              fontFamily: 'Plus Jakarta Sans, sans-serif',
-            }}>{rate}%</span>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-              taux de protection
-            </span>
-          </div>
-          {saving && <p style={{ color: 'var(--info)', fontSize: '0.85rem' }}>Sauvegarde en cours…</p>}
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
-          {/* Interested */}
-          <div className="card">
-            <div style={{ fontWeight: 700, color: 'var(--success)', marginBottom: '0.875rem', display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.85rem' }}>
-              <Check size={14} /> Retenus ({interested.length})
-            </div>
-            {interested.length === 0 ? (
-              <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>Aucun</p>
-            ) : interested.map(p => (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem', fontSize: '0.85rem' }}>
-                <span>{p.icon}</span> {p.title}
-              </div>
-            ))}
-          </div>
-
-          {/* Maybe */}
-          <div className="card">
-            <div style={{ fontWeight: 700, color: 'var(--warning)', marginBottom: '0.875rem', display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.85rem' }}>
-              <HelpCircle size={14} /> En savoir plus ({maybe.length})
-            </div>
-            {maybe.length === 0 ? (
-              <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>Aucun</p>
-            ) : maybe.map(p => (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem', fontSize: '0.85rem' }}>
-                <span>{p.icon}</span> {p.title}
-              </div>
-            ))}
-          </div>
-
-          {/* Declined */}
-          <div className="card">
-            <div style={{ fontWeight: 700, color: 'var(--danger)', marginBottom: '0.875rem', display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.85rem' }}>
-              <ThumbsDown size={14} /> Déclinés ({declined.length})
-            </div>
-            {declined.length === 0 ? (
-              <p style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>Aucun</p>
-            ) : declined.map(p => (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                <span>{p.icon}</span> {p.title}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn-primary" style={{ flex: 1 }} onClick={onPrint}>
-            <Printer size={16} /> Imprimer le résumé
-          </button>
-          <button className="btn-ghost" style={{ flex: 1, border: '1.5px solid var(--border-md)' }} onClick={onQuit}>
-            Retour au tableau de bord
-          </button>
-        </div>
-      </main>
-    </div>
-  );
-}
-
-function PrintSummary({ vehicle, clientName, responses, products, onBack, onQuit }) {
-  return (
-    <div className="print-summary">
-      <div style={{ marginBottom: '1.5rem', borderBottom: '2px solid var(--brand-red)', paddingBottom: '1rem' }}>
-        <h1 style={{ fontSize: '1.625rem', marginBottom: '0.25rem' }}>
-          Avantage Plus <span style={{ color: 'var(--brand-red)' }}>— Résumé de présentation</span>
-        </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-          {clientName && `Client : ${clientName} · `}
-          {vehicle?.year} {vehicle?.make} {vehicle?.model}
-          {' · '}{new Date().toLocaleDateString('fr-CA', { dateStyle: 'long' })}
-        </p>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-        {products.map(p => {
-          const r = responses[p.id];
-          return (
-            <div key={p.id} className="card" style={{
-              border: `2px solid ${r === 'yes' ? 'var(--success)' : r === 'maybe' ? 'var(--warning)' : r === 'no' ? 'var(--danger)' : 'var(--border-sm)'}`,
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', gap: '0.4rem' }}>
-                  {p.icon} {p.title}
-                </div>
-                <span style={{
-                  fontWeight: 700, fontSize: '0.7rem', padding: '0.2rem 0.55rem',
-                  borderRadius: '999px',
-                  background: r === 'yes' ? 'var(--success-light)' : r === 'maybe' ? 'var(--warning-light)' : r === 'no' ? 'var(--brand-red-light)' : 'var(--bg-subtle)',
-                  color: r === 'yes' ? 'var(--success)' : r === 'maybe' ? 'var(--warning)' : r === 'no' ? 'var(--brand-red)' : 'var(--text-tertiary)',
-                }}>
-                  {r === 'yes' ? 'RETENU' : r === 'maybe' ? 'EN SAVOIR PLUS' : r === 'no' ? 'DÉCLINÉ' : 'N/A'}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="no-print" style={{ marginTop: '2rem', display: 'flex', gap: '0.75rem' }}>
-        <button className="btn-primary" onClick={() => window.print()}>Imprimer</button>
-        <button className="btn-ghost" onClick={onBack}>Retour</button>
-        <button className="btn-ghost" onClick={onQuit}>Tableau de bord</button>
-      </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <Kbd>{k}</Kbd>
+      <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
     </div>
   );
 }

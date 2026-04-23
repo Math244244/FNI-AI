@@ -4,6 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import { PRODUCTS } from '../data/products';
 import { loadDealerSettings, saveDealerSettings } from '../services/settingsService';
 import {
+  buildMergedProductListFromSettings,
+  buildCatalogOverridesMap,
+  buildCustomProductsPayload,
+  DEALER_SETTINGS_VERSION,
+} from '../utils/dealerSettingsMerge';
+import PricingPanel from '../components/settings/PricingPanel';
+import {
   Settings as SettingsIcon, Save, Plus, X, Upload, FileText,
   ChevronUp, ChevronDown, ArrowLeft, GripVertical, Eye, Trash2,
   Image as ImageIcon, ExternalLink,
@@ -266,30 +273,24 @@ export default function Settings() {
   const [showCustom,   setShowCustom]  = useState(false);
   const [editingCustom,setEditingCustom]=useState(null);
   const [pdfViewer,    setPdfViewer]   = useState(null);
+  const [pricing,      setPricing]      = useState({});
 
-  /* Load products from Firestore or defaults */
+  /* Load products + tarifs from Firestore */
   useEffect(() => {
     async function load() {
-      if (isDemo) { setProducts(PRODUCTS.map(p => ({ ...p, active: true }))); return; }
+      if (isDemo) {
+        setProducts(PRODUCTS.map(p => ({ ...p, active: true })));
+        setPricing({});
+        return;
+      }
       try {
         const settings = await loadDealerSettings(dealerId);
-        if (settings?.productOrder?.length) {
-          const base = [...PRODUCTS, ...(settings.customProducts || [])];
-          const ordered = settings.productOrder
-            .map(id => base.find(p => p.id === id))
-            .filter(Boolean);
-          // Add new default products not yet in order
-          base.forEach(p => { if (!ordered.find(o => o.id === p.id)) ordered.push(p); });
-          const withState = ordered.map(p => ({
-            ...p,
-            active: settings.disabled?.includes(p.id) ? false : true,
-            ...(settings.overrides?.[p.id] || {}),
-          }));
-          setProducts(withState);
-        } else {
-          setProducts(PRODUCTS.map(p => ({ ...p, active: true })));
-        }
-      } catch { setProducts(PRODUCTS.map(p => ({ ...p, active: true }))); }
+        setProducts(buildMergedProductListFromSettings(settings, PRODUCTS));
+        setPricing(settings?.pricing && typeof settings.pricing === 'object' ? settings.pricing : {});
+      } catch {
+        setProducts(PRODUCTS.map(p => ({ ...p, active: true })));
+        setPricing({});
+      }
     }
     load();
   }, [dealerId, isDemo]);
@@ -298,11 +299,14 @@ export default function Settings() {
     if (isDemo) { alert('Mode démo — sauvegardes désactivées'); return; }
     setSaving(true);
     try {
-      const customProds = products.filter(p => p.isCustom);
+      const overrides = buildCatalogOverridesMap(products, PRODUCTS);
       await saveDealerSettings(dealerId, {
+        schemaVersion:  DEALER_SETTINGS_VERSION,
         productOrder:   products.map(p => p.id),
         disabled:       products.filter(p => !p.active).map(p => p.id),
-        customProducts: customProds,
+        customProducts: buildCustomProductsPayload(products),
+        overrides,
+        pricing,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -392,6 +396,7 @@ export default function Settings() {
         <div className="tabs-nav">
           {[
             { id: 'products', label: '🛡️ Produits' },
+            { id: 'pricing',  label: '💲 Tarifs' },
             { id: 'texts',    label: '✏️ Textes' },
             { id: 'pdfs',     label: '📄 Brochures PDF' },
           ].map(t => (
@@ -511,6 +516,11 @@ export default function Settings() {
               <Plus size={16} /> Ajouter une page personnalisée
             </button>
           </div>
+        )}
+
+        {/* ── PRICING TAB ── */}
+        {tab === 'pricing' && (
+          <PricingPanel products={products} pricing={pricing} onChange={setPricing} />
         )}
 
         {/* ── TEXTS TAB ── */}

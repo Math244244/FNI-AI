@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader, Shield } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
+import Button from '../components/ui/Button';
 
 export default function Login() {
   const { loginWithEmail, loginWithGoogle, loginAsDemo } = useAuth();
@@ -44,207 +45,261 @@ export default function Login() {
   const handleDemo = () => { loginAsDemo(); go(); };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#FFFFFF',
-      padding: '2rem',
-    }}>
-      <div style={{ width: '100%', maxWidth: '400px' }}>
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+    <div
+      className="login-layout"
+      style={{
+        minHeight: '100vh',
+        display: 'grid',
+        gridTemplateColumns: '1.15fr 1fr',
+        background: 'var(--bg-page)',
+      }}
+    >
+      {/* Hero éditorial — gauche */}
+      <aside
+        className="login-hero"
+        style={{
+          position: 'relative',
+          overflow: 'hidden',
+          background: 'linear-gradient(155deg, var(--graphite-900) 0%, #1A1A1F 50%, #12120F 100%)',
+          color: 'var(--ivoire-100)',
+          padding: 'clamp(2.5rem, 6vw, 5rem)',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* Or fumé watermark */}
+        <span aria-hidden style={{
+          position: 'absolute',
+          top: '-0.2em',
+          right: '-0.15em',
+          fontFamily: 'var(--font-display)',
+          fontStyle: 'italic',
+          fontSize: 'clamp(320px, 44vw, 700px)',
+          lineHeight: 0.82,
+          color: 'rgba(184, 147, 90, 0.09)',
+          letterSpacing: '-0.06em',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          fontWeight: 400,
+        }}>A<span style={{ color: 'rgba(184, 147, 90, 0.15)' }}>+</span></span>
+
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <span className="overline" style={{ color: 'rgba(255,255,255,0.55)', marginBottom: '0.5rem' }}>
+            Avantage Plus · F&I Prestige
+          </span>
           <div style={{
-            fontSize: '2rem', fontWeight: 800,
-            color: '#1A1A1A',
-            fontFamily: 'Plus Jakarta Sans, Inter, sans-serif',
-            letterSpacing: '-0.03em', marginBottom: '0.5rem',
+            fontFamily: 'var(--font-display)',
+            fontStyle: 'italic',
+            fontWeight: 500,
+            fontSize: 'clamp(2.75rem, 4.5vw, 4.25rem)',
+            lineHeight: 1.02,
+            letterSpacing: '-0.02em',
+            color: '#fff',
+            maxWidth: '14ch',
           }}>
-            Avantage <span style={{ color: '#D62828' }}>Plus</span>
-            <span style={{
-              fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.06em',
-              background: 'rgba(214,40,40,0.05)', color: '#D62828',
-              border: '1px solid rgba(214,40,40,0.15)',
-              padding: '0.15rem 0.4rem', borderRadius: '4px',
-              marginLeft: '0.5rem', verticalAlign: 'middle',
-            }}>FNI·AI</span>
+            L’expérience F&I <span style={{ color: 'var(--or-500)' }}>2.0</span>, signée par vos meilleurs directeurs.
           </div>
-          <div style={{ color: '#999', fontSize: '0.875rem', fontWeight: 500 }}>
-            Portail de présentations F&I
-          </div>
+          <p style={{
+            marginTop: '1.75rem',
+            fontSize: 'var(--fs-md)',
+            lineHeight: 1.65,
+            color: 'rgba(255,255,255,0.72)',
+            maxWidth: '46ch',
+          }}>
+            Une plateforme prestige, binaire et rapide. Chaque produit, chaque décision, chaque client — valorisé jusqu’à la poignée de main.
+          </p>
+
+          <ul style={{
+            marginTop: 'auto',
+            paddingTop: '3rem',
+            listStyle: 'none',
+            padding: 0,
+            display: 'grid',
+            gap: '0.65rem',
+          }}>
+            {[
+              'Présentations binaires : Important / Pas important',
+              'Véhicule ancré, prix mensuel, notes directeur',
+              'Takeaway digital automatique après la séance',
+            ].map((t) => (
+              <li key={t} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                color: 'rgba(255,255,255,0.8)',
+                fontSize: 'var(--fs-sm)',
+              }}>
+                <span style={{
+                  width: 22, height: 22, borderRadius: '50%',
+                  background: 'rgba(184,147,90,0.18)',
+                  color: 'var(--or-500)',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  border: '1px solid rgba(184,147,90,0.28)',
+                }}>
+                  <Sparkles size={12} />
+                </span>
+                {t}
+              </li>
+            ))}
+          </ul>
         </div>
+      </aside>
 
-        {/* Error */}
-        {error && (
-          <div style={{
-            padding: '0.75rem 1rem',
-            borderRadius: '12px',
-            background: 'rgba(220,38,38,0.05)',
-            border: '1px solid rgba(220,38,38,0.12)',
-            color: '#DC2626',
-            fontSize: '0.825rem',
-            marginBottom: '1.25rem',
-            display: 'flex', alignItems: 'center', gap: '0.5rem',
-          }}>
-            {error}
-          </div>
-        )}
+      {/* Form — droite */}
+      <main style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 'clamp(2rem, 5vw, 4rem)',
+      }}>
+        <div style={{ width: '100%', maxWidth: 400 }}>
+          <header style={{ marginBottom: '2rem' }}>
+            <span className="overline">Connexion</span>
+            <h1 style={{
+              fontFamily: 'var(--font-display)',
+              fontStyle: 'italic',
+              fontWeight: 500,
+              fontSize: 'var(--fs-3xl)',
+              letterSpacing: '-0.02em',
+              margin: '0.25rem 0 0.35rem',
+            }}>
+              Heureux de vous revoir.
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)', margin: 0 }}>
+              Accédez à votre portail F&I Avantage Plus.
+            </p>
+          </header>
 
-        <form onSubmit={handleEmail}>
-          {/* Email */}
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{
-              display: 'block', fontSize: '0.8rem', fontWeight: 600,
-              color: '#555', marginBottom: '0.4rem',
-            }}>Courriel</label>
-            <div style={{ position: 'relative' }}>
-              <Mail size={15} style={{
-                position: 'absolute', left: '0.875rem', top: '50%',
-                transform: 'translateY(-50%)', color: '#BDBDBD',
-              }} />
-              <input
-                type="email"
-                value={email}
-                onChange={e => { setEmail(e.target.value); setError(''); }}
-                placeholder="votre@courriel.ca"
-                required
-                autoFocus
-                style={{
-                  width: '100%', padding: '0.75rem 1rem 0.75rem 2.625rem',
-                  borderRadius: '12px', fontSize: '0.9rem',
-                  background: '#FFFFFF',
-                  border: '1.5px solid #E5E5E5',
-                  color: '#1A1A1A', fontFamily: 'inherit',
-                  outline: 'none', transition: 'all 0.2s',
-                }}
-                onFocus={e => { e.target.style.borderColor = '#D62828'; e.target.style.boxShadow = '0 0 0 3px rgba(214,40,40,0.08)'; }}
-                onBlur={e => { e.target.style.borderColor = '#E5E5E5'; e.target.style.boxShadow = 'none'; }}
-              />
+          {error && (
+            <div style={{
+              padding: '0.75rem 0.9rem',
+              borderRadius: 'var(--r-md)',
+              background: 'var(--danger-light)',
+              border: '1px solid var(--danger-border)',
+              color: 'var(--crimson-500)',
+              fontSize: 'var(--fs-xs)',
+              marginBottom: '1.25rem',
+              fontWeight: 500,
+            }}>
+              {error}
             </div>
-          </div>
+          )}
 
-          {/* Password */}
-          <div style={{ marginBottom: '1.75rem' }}>
-            <label style={{
-              display: 'block', fontSize: '0.8rem', fontWeight: 600,
-              color: '#555', marginBottom: '0.4rem',
-            }}>Mot de passe</label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={15} style={{
-                position: 'absolute', left: '0.875rem', top: '50%',
-                transform: 'translateY(-50%)', color: '#BDBDBD',
-              }} />
-              <input
-                type={showPwd ? 'text' : 'password'}
-                value={password}
-                onChange={e => { setPassword(e.target.value); setError(''); }}
-                placeholder="••••••••"
-                required
-                style={{
-                  width: '100%', padding: '0.75rem 2.75rem 0.75rem 2.625rem',
-                  borderRadius: '12px', fontSize: '0.9rem',
-                  background: '#FFFFFF',
-                  border: '1.5px solid #E5E5E5',
-                  color: '#1A1A1A', fontFamily: 'inherit',
-                  outline: 'none', transition: 'all 0.2s',
-                }}
-                onFocus={e => { e.target.style.borderColor = '#D62828'; e.target.style.boxShadow = '0 0 0 3px rgba(214,40,40,0.08)'; }}
-                onBlur={e => { e.target.style.borderColor = '#E5E5E5'; e.target.style.boxShadow = 'none'; }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPwd(s => !s)}
-                style={{
-                  position: 'absolute', right: '0.75rem', top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#BDBDBD', padding: '0.2rem',
-                }}
-              >
-                {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
+          <form onSubmit={handleEmail} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+              <label className="form-label">Courriel</label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={14} style={{
+                  position: 'absolute', left: 12, top: '50%',
+                  transform: 'translateY(-50%)', color: 'var(--text-tertiary)',
+                }} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setError(''); }}
+                  placeholder="votre@courriel.ca"
+                  required
+                  autoFocus
+                  className="form-input"
+                  style={{ paddingLeft: 34 }}
+                />
+              </div>
             </div>
+
+            <div>
+              <label className="form-label">Mot de passe</label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={14} style={{
+                  position: 'absolute', left: 12, top: '50%',
+                  transform: 'translateY(-50%)', color: 'var(--text-tertiary)',
+                }} />
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(''); }}
+                  placeholder="••••••••"
+                  required
+                  className="form-input"
+                  style={{ paddingLeft: 34, paddingRight: 38 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(s => !s)}
+                  aria-label={showPwd ? 'Masquer' : 'Afficher'}
+                  style={{
+                    position: 'absolute', right: 10, top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-tertiary)', padding: 4,
+                    display: 'flex', alignItems: 'center',
+                  }}
+                >
+                  {showPwd ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              disabled={loading}
+              loading={loading}
+              iconRight={!loading ? <ArrowRight size={16} /> : null}
+              style={{ width: '100%', marginTop: '0.5rem' }}
+            >
+              {loading ? 'Connexion…' : 'Se connecter'}
+            </Button>
+          </form>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.5rem 0' }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--border-hair)' }} />
+            <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: '0.08em' }}>OU</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--border-hair)' }} />
           </div>
 
-          {/* Submit */}
-          <button
-            type="submit"
+          <Button
+            variant="outline"
+            onClick={handleGoogle}
             disabled={loading}
-            style={{
-              width: '100%', padding: '0.85rem',
-              background: loading ? '#E5E5E5' : '#D62828',
-              color: loading ? '#999' : 'white',
-              borderRadius: '12px',
-              fontWeight: 700, fontSize: '0.9rem',
-              border: 'none', cursor: loading ? 'wait' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-              boxShadow: loading ? 'none' : '0 4px 14px rgba(214,40,40,0.18)',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => { if (!loading) { e.currentTarget.style.background = '#C02020'; e.currentTarget.style.transform = 'translateY(-1px)'; }}}
-            onMouseLeave={e => { if (!loading) { e.currentTarget.style.background = '#D62828'; e.currentTarget.style.transform = 'translateY(0)'; }}}
+            style={{ width: '100%', marginBottom: '0.5rem' }}
+            icon={<img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="" style={{ width: 14, height: 14 }} />}
           >
-            {loading
-              ? <><Loader size={15} style={{ animation: 'spin 0.8s linear infinite' }} /> Connexion…</>
-              : <>Se connecter <ArrowRight size={15} /></>}
+            Continuer avec Google
+          </Button>
+
+          <button
+            onClick={handleDemo}
+            style={{
+              width: '100%', padding: '0.5rem',
+              background: 'transparent', border: 'none',
+              color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)',
+              cursor: 'pointer', fontWeight: 500,
+              transition: 'var(--tx)',
+              fontStyle: 'italic',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; }}
+          >
+            Mode démo — sans compte Firebase
           </button>
-        </form>
 
-        {/* Divider */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.5rem 0' }}>
-          <div style={{ flex: 1, height: 1, background: '#F0F0F0' }} />
-          <span style={{ fontSize: '0.725rem', color: '#BDBDBD', fontWeight: 600, letterSpacing: '0.05em' }}>OU</span>
-          <div style={{ flex: 1, height: 1, background: '#F0F0F0' }} />
+          <div style={{
+            marginTop: '2rem', textAlign: 'center',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)',
+          }}>
+            <ShieldCheck size={12} /> Connexion sécurisée et chiffrée · SSO compatible
+          </div>
         </div>
+      </main>
 
-        {/* Google */}
-        <button
-          onClick={handleGoogle}
-          disabled={loading}
-          style={{
-            width: '100%', padding: '0.795rem',
-            background: '#FFFFFF',
-            border: '1.5px solid #E5E5E5',
-            color: '#424242', borderRadius: '12px',
-            fontWeight: 600, fontSize: '0.85rem',
-            cursor: 'pointer', marginBottom: '0.75rem',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#D5D5D5'; e.currentTarget.style.background = '#FAFAFA'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E5E5'; e.currentTarget.style.background = '#FFFFFF'; }}
-        >
-          <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google" style={{ width: 16, height: 16 }} />
-          Continuer avec Google
-        </button>
-
-        {/* Demo */}
-        <button
-          onClick={handleDemo}
-          style={{
-            width: '100%', padding: '0.625rem',
-            background: 'transparent', border: 'none',
-            color: '#BDBDBD', fontSize: '0.775rem',
-            cursor: 'pointer', fontWeight: 500,
-            transition: 'color 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#999'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = '#BDBDBD'; }}
-        >
-          Mode démo — sans compte Firebase
-        </button>
-
-        {/* Footer */}
-        <div style={{
-          marginTop: '2rem', textAlign: 'center',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem',
-          fontSize: '0.75rem', color: '#BDBDBD',
-        }}>
-          <Shield size={12} /> Connexion sécurisée et chiffrée
-        </div>
-      </div>
-
+      <style>{`
+        @media (max-width: 900px) {
+          .login-layout { grid-template-columns: 1fr !important; }
+          .login-hero { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 }
