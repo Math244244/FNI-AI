@@ -1,7 +1,18 @@
 // ════════════════════════════════════════════════════════════════
 //  Données véhicules — Marché canadien complet
 //  Automobiles (2014+), Loisirs (2013+), VR (2013+)
+//
+//  Règles de cloisonnement (important) :
+//  - AUTOMOBILE ne contient QUE des marques/modèles de voitures.
+//  - LOISIRS ne contient QUE moto / VTT / motoneige / côte-à-côte /
+//    moto-marine / bateau (aucun modèle auto).
+//  - VR ne contient QUE roulottes + motorisés (aucun modèle auto).
+//  Les marques mixtes (Honda, BMW, Yamaha, Kawasaki, Suzuki…) sont
+//  listées dans chaque catégorie pertinente avec UNIQUEMENT leurs
+//  modèles de cette catégorie.
 // ════════════════════════════════════════════════════════════════
+
+import { AUTO_MAKES as AUTO_MAKES_LIST, AUTO_MODELS_BY_MAKE } from './autoCatalog.js';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -44,29 +55,10 @@ export const VEHICLE_COLORS = [
 ];
 
 // ════════════════════════════════════════════════════════════════
-//  AUTOMOBILE — Marques disponibles au Canada (2014–présent)
-//  Les modèles sont récupérés via l'API NHTSA vPIC
+//  AUTOMOBILE — marques + modèles (catalogue statique canadien)
 // ════════════════════════════════════════════════════════════════
-export const AUTO_MAKES = [
-  'Acura', 'Alfa Romeo', 'Aston Martin', 'Audi',
-  'Bentley', 'BMW', 'Buick',
-  'Cadillac', 'Chevrolet', 'Chrysler',
-  'Dodge',
-  'Ferrari', 'Fiat', 'Ford',
-  'Genesis', 'GMC',
-  'Honda', 'Hyundai',
-  'Infiniti',
-  'Jaguar', 'Jeep',
-  'Kia',
-  'Lamborghini', 'Land Rover', 'Lexus', 'Lincoln', 'Lotus', 'Lucid',
-  'Maserati', 'Mazda', 'McLaren', 'Mercedes-Benz', 'Mini', 'Mitsubishi',
-  'Nissan',
-  'Polestar', 'Porsche',
-  'Ram', 'Rivian', 'Rolls-Royce',
-  'Scion', 'Smart', 'Subaru',
-  'Tesla', 'Toyota',
-  'VinFast', 'Volkswagen', 'Volvo',
-];
+export const AUTO_MAKES = AUTO_MAKES_LIST;
+export { AUTO_MODELS_BY_MAKE };
 
 // ════════════════════════════════════════════════════════════════
 //  LOISIRS — Données statiques (marques + modèles)
@@ -638,6 +630,8 @@ const VR_DATA = {
 
 // ════════════════════════════════════════════════════════════════
 //  API — Fonctions d'accès aux données
+//  Cloisonnement strict : chaque catégorie retourne UNIQUEMENT
+//  les marques/modèles qui lui sont propres.
 // ════════════════════════════════════════════════════════════════
 
 export function getYears(category) {
@@ -652,6 +646,10 @@ export function getMakes(category, subType) {
 }
 
 export function getStaticModels(category, subType, make) {
+  if (!make) return [];
+  if (category === 'automobile') {
+    return AUTO_MODELS_BY_MAKE[make] || [];
+  }
   let data;
   if (category === 'loisirs' && subType) data = REC_DATA[subType];
   else if (category === 'vr' && subType) data = VR_DATA[subType];
@@ -659,31 +657,11 @@ export function getStaticModels(category, subType, make) {
   return data?.models?.[make] || [];
 }
 
-const modelCache = {};
-
-export async function fetchModelsFromAPI(make, year) {
-  const key = `${make}_${year}`;
-  if (modelCache[key]) return modelCache[key];
-  try {
-    const r = await fetch(
-      `https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/${encodeURIComponent(make)}/modelyear/${year}?format=json`,
-    );
-    const d = await r.json();
-    const list = [...new Set(d.Results?.map(r => r.Model_Name).filter(Boolean) || [])].sort();
-    modelCache[key] = list;
-    return list;
-  } catch {
-    return [];
-  }
-}
-
-export async function getModels(category, subType, make, year) {
-  if (category === 'automobile') {
-    return fetchModelsFromAPI(make, year);
-  }
-  if (category === 'loisirs' && subType === 'moto') {
-    const api = await fetchModelsFromAPI(make, year);
-    if (api.length > 0) return api;
-  }
+/**
+ * Récupère la liste des modèles pour une combinaison catégorie/sous-type/marque/année.
+ * Tout est servi depuis le catalogue statique (aucune dépendance externe),
+ * ce qui garantit le cloisonnement strict entre automobile et loisirs/VR.
+ */
+export async function getModels(category, subType, make, _year) {
   return getStaticModels(category, subType, make);
 }

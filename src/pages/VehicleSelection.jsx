@@ -10,6 +10,7 @@ import {
   getYears, getMakes, getModels,
 } from '../data/vehicleData';
 import Select from '../components/ui/Select';
+import Combobox from '../components/ui/Combobox';
 import Button from '../components/ui/Button';
 import SearchBar from '../components/VehiclePicker/SearchBar';
 import RecentChips from '../components/VehiclePicker/RecentChips';
@@ -385,24 +386,26 @@ export default function VehicleSelection() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="form-label">Marque</label>
-                    <Select
+                    <Combobox
                       value={make}
                       onValueChange={(v) => { setMake(v); setYear(''); setModel(''); setTrim(''); setModels([]); }}
                       placeholder="— Sélectionner —"
                       items={makeItems}
                       ariaLabel="Marque"
+                      emptyLabel="Aucune marque trouvée"
                     />
                   </div>
 
                   <div>
                     <label className="form-label">Année</label>
-                    <Select
+                    <Combobox
                       value={year}
                       onValueChange={(v) => { setYear(v); setModel(''); setTrim(''); }}
                       placeholder="— Sélectionner —"
                       items={yearItems}
                       disabled={!make}
                       ariaLabel="Année"
+                      emptyLabel="Aucune année trouvée"
                     />
                   </div>
 
@@ -424,13 +427,15 @@ export default function VehicleSelection() {
                         onChange={e => { setModel(e.target.value); setTrim(''); }}
                       />
                     ) : (
-                      <Select
+                      <Combobox
                         value={model}
                         onValueChange={(v) => { setModel(v); setTrim(''); }}
                         placeholder={modelsLoading ? 'Chargement…' : '— Sélectionner —'}
                         items={modelItems}
                         disabled={!make || !year || modelsLoading || modelItems.length === 0}
                         ariaLabel="Modèle"
+                        emptyLabel="Aucun modèle trouvé"
+                        allowCustom
                       />
                     )}
                   </div>
