@@ -1,34 +1,38 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   DndContext, PointerSensor, useSensor, useSensors, pointerWithin,
+  DragOverlay,
 } from '@dnd-kit/core';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { useNavigate } from 'react-router-dom';
 import { usePresentation } from '../context/PresentationContext';
-import { ENRICHED_PRODUCTS } from '../data/productPricing';
+import { ENRICHED_PRODUCTS, enrichProductWithPricing } from '../data/productPricing';
+import { PRODUCTS } from '../data/products';
+import { buildMergedProductListFromSettings } from '../utils/dealerSettingsMerge';
 import { getInterest } from '../utils/responseHelpers.js';
 import {
-  defaultPlacementsFromResponses,
-  productIdsForCumulativeLevel,
+  defaultBinaryPlacementsFromResponses,
+  importantProductIds,
   sumFinancedAddOnCentsForIds,
   displayColumnCost,
   deltaVersusBase,
+  productFinancedValueCents,
 } from '../utils/menuCalculations.js';
 import { updatePresentation, publishPublicSnapshot } from '../services/presentationService';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
-import { ArrowLeft, Check, Link2, Sparkles, Copy, CarFront } from 'lucide-react';
+import {
+  ArrowLeft, Check, Link2, Copy, CarFront, Lock, Star, MinusCircle,
+} from 'lucide-react';
 import { Money } from '../utils/money.js';
 
-const COLS = /** @type {const} */ (['essentiel', 'recommande', 'premium', 'rejet']);
+const COLS = /** @type {const} */ (['important', 'pas_important']);
 const COL_LABELS = {
-  essentiel:   'Essentiel',
-  recommande:  'Recommandé',
-  premium:     'Premium',
-  rejet:       'Rejet',
+  important:     'Important',
+  pas_important: 'Pas important',
 };
 
-function DraggableCard({ id, children, disabled }) {
+function DraggableCard({ id, title, price, dim, disabled }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, disabled });
   return (
     <div
@@ -37,59 +41,133 @@ function DraggableCard({ id, children, disabled }) {
       {...attributes}
       {...listeners}
       style={{
-        padding: '0.45rem 0.6rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: '0.85rem 1rem',
         background: 'var(--bg-card)',
         border: '1px solid var(--border-hair)',
-        borderRadius: 'var(--r-sm)',
-        fontSize: 'var(--fs-sm)',
+        borderRadius: 'var(--r-md)',
+        fontSize: 'var(--fs-md)',
         fontWeight: 500,
-        marginBottom: 6,
+        marginBottom: 10,
         cursor: disabled ? 'default' : 'grab',
-        opacity: isDragging ? 0.5 : 1,
-        transform: isDragging ? 'scale(1.02)' : 'none',
-        boxShadow: isDragging ? '0 8px 28px rgba(0,0,0,0.12)' : 'none',
+        opacity: isDragging ? 0.35 : 1,
+        transform: isDragging ? 'scale(1.01)' : 'none',
+        boxShadow: isDragging ? '0 18px 40px rgba(0,0,0,0.18)' : 'var(--shadow-xs)',
+        transition: 'box-shadow 0.2s var(--ease-out), border-color 0.2s var(--ease-out)',
         touchAction: 'none',
       }}
     >
-      {children}
+      <span style={{
+        flex: 1,
+        minWidth: 0,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        color: dim ? 'var(--text-secondary)' : 'var(--text-primary)',
+      }}>
+        {title}
+      </span>
+      {price != null && (
+        <span style={{
+          fontFamily: 'var(--font-display)',
+          fontStyle: 'italic',
+          fontWeight: 600,
+          fontSize: 'var(--fs-sm)',
+          color: dim ? 'var(--text-tertiary)' : 'var(--or-900)',
+          fontVariantNumeric: 'tabular-nums',
+          whiteSpace: 'nowrap',
+        }}>
+          {new Money(price).format()}
+        </span>
+      )}
     </div>
   );
 }
 
-function DropColumn({ colId, label, children, highlight }) {
+function DropColumn({ colId, label, subtitle, accent, icon, count, children }) {
   const { isOver, setNodeRef } = useDroppable({ id: colId });
+  const isImportant = colId === 'important';
   return (
     <div
       ref={setNodeRef}
       style={{
-        minHeight: 200,
+        minHeight: 320,
         flex: 1,
         minWidth: 0,
-        padding: '0.6rem',
-        borderRadius: 'var(--r-md)',
-        border: isOver ? '2px solid var(--or-500)' : highlight
-          ? '2px solid var(--or-500)'
-          : '1px solid var(--border-hair)',
-        background: highlight
-          ? 'linear-gradient(180deg, var(--or-100), var(--bg-card))'
-          : isOver
-            ? 'var(--or-100)'
-            : 'var(--bg-subtle)',
+        padding: '1rem 1rem 1.25rem',
+        borderRadius: 'var(--r-lg)',
+        border: isOver
+          ? `2px solid ${accent}`
+          : isImportant
+            ? `1px solid ${accent}`
+            : '1px solid var(--border-hair)',
+        background: isImportant
+          ? 'linear-gradient(180deg, var(--or-100) 0%, var(--bg-card) 50%)'
+          : 'var(--bg-subtle)',
         display: 'flex',
         flexDirection: 'column',
-        transition: 'var(--tx)',
+        transition: 'border-color 0.2s var(--ease-out), background 0.2s var(--ease-out)',
       }}
     >
-      <div
-        className="overline"
-        style={{
-          marginBottom: 8,
-          color: highlight ? 'var(--or-900)' : 'var(--text-tertiary)',
-        }}
-      >
-        {label}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4,
+      }}>
+        {icon}
+        <h3 style={{
+          margin: 0,
+          fontFamily: 'var(--font-display)',
+          fontStyle: 'italic',
+          fontWeight: 500,
+          fontSize: '1.35rem',
+          color: isImportant ? 'var(--or-900)' : 'var(--text-primary)',
+          letterSpacing: '-0.01em',
+        }}>
+          {label}
+        </h3>
+        <span style={{
+          marginLeft: 'auto',
+          fontSize: 'var(--fs-xs)',
+          fontWeight: 600,
+          color: 'var(--text-tertiary)',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-hair)',
+          borderRadius: 999,
+          padding: '2px 8px',
+        }}>
+          {count}
+        </span>
       </div>
-      <div style={{ flex: 1, overflow: 'auto' }}>{children}</div>
+      {subtitle && (
+        <p style={{
+          margin: 0,
+          fontSize: 'var(--fs-xs)',
+          color: 'var(--text-tertiary)',
+          marginBottom: 14,
+        }}>
+          {subtitle}
+        </p>
+      )}
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        {React.Children.count(children) === 0 ? (
+          <div style={{
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: 160,
+            color: 'var(--text-tertiary)',
+            fontSize: 'var(--fs-xs)',
+            fontStyle: 'italic',
+            textAlign: 'center',
+            padding: '0 1rem',
+          }}>
+            Glissez un produit ici
+          </div>
+        ) : children}
+      </div>
     </div>
   );
 }
@@ -108,44 +186,104 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
   } = usePresentation();
   const timePerProduct = timePerProductProp;
 
-  const [placements, setPlacements] = useState(
-    () => menuState?.placements || defaultPlacementsFromResponses(responses),
-  );
-  const [choice, setChoice]     = useState(/** @type {'essentiel'|'recommande'|'premium'|null} */ (null));
+  // Migration legacy → binaire (anciennes valeurs : essentiel/recommande/premium → important, rejet → pas_important)
+  const initialPlacements = useMemo(() => {
+    const src = menuState?.placements;
+    if (src && Object.values(src).every((v) => v === 'important' || v === 'pas_important')) {
+      return src;
+    }
+    if (src && Object.keys(src).length) {
+      const mapped = {};
+      for (const [id, v] of Object.entries(src)) {
+        mapped[id] = v === 'rejet' ? 'pas_important' : 'important';
+      }
+      return mapped;
+    }
+    return defaultBinaryPlacementsFromResponses(responses);
+  }, [menuState, responses]);
+
+  const [placements, setPlacements] = useState(initialPlacements);
   const [publishing, setPub]  = useState(false);
   const [shareUrl, setShareUrl] = useState(/** @type {string|null} */ (null));
   const [sealed, setSealed]     = useState(false);
+  const [activeDragId, setActiveDragId] = useState(/** @type {string|null} */ (null));
+
+  // Catalogue fusionné (incluant custom dealer) si disponible, sinon ENRICHED_PRODUCTS
+  const allProducts = useMemo(() => {
+    if (dealerSettingsSnapshot) {
+      const merged = buildMergedProductListFromSettings(dealerSettingsSnapshot, PRODUCTS)
+        .filter((p) => p.active !== false)
+        .map((p) => enrichProductWithPricing(p));
+      if (merged.length) return merged;
+    }
+    return ENRICHED_PRODUCTS;
+  }, [dealerSettingsSnapshot]);
 
   const products = useMemo(
-    () => ENRICHED_PRODUCTS.filter((p) => getInterest(responses[p.id]) != null),
-    [responses],
+    () => allProducts.filter((p) => getInterest(responses[p.id]) != null),
+    [allProducts, responses],
   );
 
-  const byCol = useMemo(() => {
-    const m = { essentiel: [], recommande: [], premium: [], rejet: [] };
+  // Valeur unitaire (financée, taxes incluses) par produit — pour affichage carte + totaux
+  const unitCentsById = useMemo(() => {
+    const m = {};
     products.forEach((p) => {
-      const c = placements[p.id] || 'rejet';
+      m[p.id] = productFinancedValueCents(p, responses?.[p.id], dealerSettingsSnapshot);
+    });
+    return m;
+  }, [products, responses, dealerSettingsSnapshot]);
+
+  // S'assure que chaque produit présent ait une placement (par défaut : important si yes/maybe, sinon pas_important)
+  const placementsComplete = useMemo(() => {
+    const out = { ...placements };
+    products.forEach((p) => {
+      if (!out[p.id]) {
+        const l = getInterest(responses[p.id]);
+        out[p.id] = l === 'no' ? 'pas_important' : 'important';
+      }
+    });
+    return out;
+  }, [placements, products, responses]);
+
+  const byCol = useMemo(() => {
+    const m = { important: [], pas_important: [] };
+    products.forEach((p) => {
+      const c = placementsComplete[p.id] || 'pas_important';
       if (m[c]) m[c].push(p);
     });
     return m;
-  }, [placements, products]);
+  }, [placementsComplete, products]);
 
-  const threeLevels = useMemo(
-    () => (['essentiel', 'recommande', 'premium']).map((lvl) => {
-      const ids = productIdsForCumulativeLevel(placements, /** @type {'essentiel'|'recommande'|'premium'} */ (lvl));
-      const add = sumFinancedAddOnCentsForIds(ids, products, responses, dealerSettingsSnapshot);
-      const d = displayColumnCost(financing, add);
-      const delta = deltaVersusBase(financing, add);
-      return { lvl, ids, add, d, delta };
-    }),
-    [placements, products, responses, financing, dealerSettingsSnapshot],
+  const importantIds = useMemo(
+    () => importantProductIds(placementsComplete),
+    [placementsComplete],
+  );
+
+  const importantAddOnCents = useMemo(
+    () => sumFinancedAddOnCentsForIds(importantIds, products, responses, dealerSettingsSnapshot),
+    [importantIds, products, responses, dealerSettingsSnapshot],
+  );
+
+  const totalDisplay = useMemo(
+    () => displayColumnCost(financing, importantAddOnCents),
+    [financing, importantAddOnCents],
+  );
+
+  const delta = useMemo(
+    () => deltaVersusBase(financing, importantAddOnCents),
+    [financing, importantAddOnCents],
   );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
 
+  const onDragStart = useCallback((e) => {
+    setActiveDragId(String(e.active?.id || ''));
+  }, []);
+
   const onDragEnd = useCallback((e) => {
+    setActiveDragId(null);
     const { active, over } = e;
     if (!over) return;
     const pid = String(active.id);
@@ -159,19 +297,30 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
     });
   }, []);
 
-  const seal = async (clientChoice) => {
+  const onDragCancel = useCallback(() => setActiveDragId(null), []);
+
+  const toggle = useCallback((pid) => {
+    if (sealed) return;
+    setPlacements((prev) => ({
+      ...prev,
+      [pid]: (prev[pid] || placementsComplete[pid]) === 'important' ? 'pas_important' : 'important',
+    }));
+  }, [sealed, placementsComplete]);
+
+  const seal = async () => {
     if (sealed) return;
     const menuFinal = {
-      clientChoice,
-      placements: { ...placements },
-      sealedAt:   Date.now(),
+      placements: { ...placementsComplete },
+      importantIds: [...importantIds],
+      addonCents: importantAddOnCents,
+      paymentCents: totalDisplay.isPeriodic ? totalDisplay.valueCents : null,
+      sealedAt: Date.now(),
     };
     setSealed(true);
     setMenuState(menuFinal);
     if (presId) {
-      try {
-        await updatePresentation(presId, { menuFinal });
-      } catch (e) { console.error(e); }
+      try { await updatePresentation(presId, { menuFinal }); }
+      catch (e) { console.error(e); }
     }
     onComplete?.(menuFinal);
     if (onComplete == null) {
@@ -180,7 +329,7 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
   };
 
   const back = onBack || (() => {
-    setMenuState({ placements: { ...placements } });
+    setMenuState({ placements: { ...placementsComplete } });
     navigate('/dashboard');
   });
 
@@ -197,7 +346,7 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
         responses,
         financing,
         timePerProduct: timePerProduct || {},
-        placements:    { ...placements },
+        placements:    { ...placementsComplete },
         dealerPricing: dealerSettingsSnapshot?.pricing || null,
         createdBy:     currentUser.uid,
         presId:        presId || null,
@@ -207,6 +356,10 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
       console.error(e);
     } finally { setPub(false); }
   };
+
+  const activeProduct = activeDragId
+    ? products.find((p) => p.id === activeDragId)
+    : null;
 
   if (products.length === 0) {
     return (
@@ -225,17 +378,15 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
         }}
       >
         <CarFront size={40} color="var(--or-500)" strokeWidth={1.2} style={{ opacity: 0.85 }} />
-        <h1
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle:  'italic',
-            fontSize:   '1.4rem',
-            fontWeight: 500,
-            margin:     0,
-            maxWidth:   400,
-            lineHeight: 1.35,
-          }}
-        >
+        <h1 style={{
+          fontFamily: 'var(--font-display)',
+          fontStyle:  'italic',
+          fontSize:   '1.4rem',
+          fontWeight: 500,
+          margin:     0,
+          maxWidth:   400,
+          lineHeight: 1.35,
+        }}>
           Aucune présentation en cours
         </h1>
         <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', maxWidth: 400, margin: 0 }}>
@@ -255,24 +406,40 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
   return (
     <div
       className="animate-in"
-      style={{ minHeight: '100vh', background: 'var(--bg-page)', padding: '1.5rem' }}
+      style={{ minHeight: '100vh', background: 'var(--bg-page)', padding: 'clamp(1rem, 2vw, 1.75rem)' }}
     >
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div>
-            <h1
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontStyle:  'italic',
-                fontSize:   '1.6rem',
-                fontWeight: 500,
-                margin:     0,
-              }}
-            >
-              Menu de vente
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+        {/* ── Header ── */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 16,
+          flexWrap: 'wrap',
+          marginBottom: 20,
+        }}>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <span className="overline" style={{ color: 'var(--text-tertiary)' }}>
+              Étape finale · Menu client
+            </span>
+            <h1 style={{
+              fontFamily: 'var(--font-display)',
+              fontStyle:  'italic',
+              fontSize:   'clamp(1.75rem, 2.4vw, 2.25rem)',
+              fontWeight: 500,
+              margin:     '0.25rem 0 0',
+              letterSpacing: '-0.02em',
+            }}>
+              Bâtissez la transaction avec le client
             </h1>
-            <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', margin: '0.3rem 0 0' }}>
-              Colonnes cumulatives — le client valide un scénario
+            <p style={{
+              color: 'var(--text-secondary)',
+              fontSize: 'var(--fs-sm)',
+              margin: '0.4rem 0 0',
+              maxWidth: 620,
+            }}>
+              Déplacez chaque produit entre <strong>Important</strong> et <strong>Pas important</strong>.
+              Le paiement se met à jour en direct.
             </p>
           </div>
           <Button variant="ghost" icon={<ArrowLeft size={16} />} onClick={back}>
@@ -280,110 +447,205 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
           </Button>
         </div>
 
-        {/* 3 totaux cumulatifs */}
-        <div
-          style={{
-            display:   'grid',
-            gridTemplateColumns: '1fr 1.15fr 1fr',
-            gap:       '0.75rem',
-            marginBottom: 16,
-          }}
-        >
-          {threeLevels.map(({ lvl, d, delta }) => (
-            <div
-              key={lvl}
-              style={{
-                borderRadius: 'var(--r-md)',
-                border:        lvl === 'recommande' ? '2px solid var(--or-500)' : '1px solid var(--border-hair)',
-                background:   lvl === 'recommande' ? 'linear-gradient(180deg, var(--or-100), var(--bg-card))' : 'var(--bg-card)',
-                padding:      '0.9rem 1rem',
-                textAlign:    'center',
-              }}
-            >
-              <div
-                className="overline"
-                style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}
-              >
-                {COL_LABELS[lvl]}
-                {delta != null && (
-                  <span style={{ color: 'var(--forest-600)' }}>
-                    {' '}
-                    (
-                    {delta >= 0 ? '+' : ''}
-                    {d.isPeriodic
-                      ? `${(delta / 100).toFixed(2)} $ / versement`
-                      : new Money(Math.round(delta)).format()}
-                    )
-                  </span>
-                )}
-              </div>
-              <div
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize:  '1.4rem',
-                  fontWeight: 600,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {new Money(d.valueCents).format()}
-                {d.isPeriodic && (
-                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-tertiary)' }}> / versement</span>
-                )}
-              </div>
+        {/* ── Bandeau Total LIVE ── */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 12,
+          marginBottom: 24,
+          padding: 'clamp(1rem, 1.5vw, 1.4rem)',
+          background: 'linear-gradient(135deg, #0e0e11 0%, #1c1c22 100%)',
+          borderRadius: 'var(--r-lg)',
+          color: '#f7f4ee',
+          boxShadow: 'var(--shadow-md)',
+        }}>
+          <div>
+            <div className="overline" style={{ color: 'rgba(247,244,238,0.55)', marginBottom: 6 }}>
+              Paiement total estimé
             </div>
-          ))}
+            <div style={{
+              fontFamily: 'var(--font-display)',
+              fontStyle: 'italic',
+              fontWeight: 600,
+              fontSize: 'clamp(2rem, 3.8vw, 3rem)',
+              lineHeight: 1,
+              letterSpacing: '-0.02em',
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {new Money(totalDisplay.valueCents).format()}
+              {totalDisplay.isPeriodic && (
+                <span style={{
+                  fontSize: 'var(--fs-md)',
+                  color: 'rgba(247,244,238,0.6)',
+                  marginLeft: 8,
+                  fontStyle: 'normal',
+                  fontWeight: 500,
+                }}>
+                  / versement
+                </span>
+              )}
+            </div>
+            {delta != null && (
+              <div style={{
+                marginTop: 6,
+                fontSize: 'var(--fs-sm)',
+                color: delta > 0 ? 'var(--or-500)' : 'rgba(247,244,238,0.55)',
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {delta >= 0 ? '+' : ''}
+                {(delta / 100).toFixed(2)} $ vs paiement de base
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="overline" style={{ color: 'rgba(247,244,238,0.55)', marginBottom: 6 }}>
+              Produits retenus
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-display)',
+              fontStyle: 'italic',
+              fontWeight: 600,
+              fontSize: '2rem',
+              lineHeight: 1,
+            }}>
+              {importantIds.length}
+              <span style={{
+                fontSize: 'var(--fs-md)',
+                color: 'rgba(247,244,238,0.5)',
+                marginLeft: 6,
+                fontStyle: 'normal',
+                fontWeight: 500,
+              }}>
+                / {products.length}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <div className="overline" style={{ color: 'rgba(247,244,238,0.55)', marginBottom: 6 }}>
+              Ajouté au financement
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-display)',
+              fontStyle: 'italic',
+              fontWeight: 600,
+              fontSize: '1.75rem',
+              lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {new Money(importantAddOnCents).format()}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+            <Button
+              variant="primary"
+              size="md"
+              icon={<Lock size={14} />}
+              onClick={seal}
+              disabled={sealed}
+            >
+              {sealed ? 'Choix scellé' : 'Sceller le menu'}
+            </Button>
+          </div>
         </div>
 
+        {/* ── 2 colonnes DnD ── */}
         <DndContext
           sensors={sensors}
           collisionDetection={pointerWithin}
+          onDragStart={onDragStart}
           onDragEnd={onDragEnd}
+          onDragCancel={onDragCancel}
         >
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
-            {COLS.map((c) => (
-              <DropColumn
-                key={c}
-                colId={c}
-                label={COL_LABELS[c]}
-                highlight={c === 'recommande'}
-              >
-                {byCol[c].map((p) => (
-                  <DraggableCard key={p.id} id={p.id} disabled={sealed}>
-                    {p.title}
-                  </DraggableCard>
-                ))}
-              </DropColumn>
-            ))}
+          <div
+            className="menu-2col-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 20,
+              marginBottom: 24,
+            }}
+          >
+            <DropColumn
+              colId="important"
+              label="Important"
+              subtitle="Produits retenus · impactent le paiement affiché"
+              accent="var(--or-500)"
+              count={byCol.important.length}
+              icon={<Star size={18} color="var(--or-700)" strokeWidth={2} />}
+            >
+              {byCol.important.map((p) => (
+                <div
+                  key={p.id}
+                  onDoubleClick={() => toggle(p.id)}
+                  title="Double-cliquez pour déplacer"
+                >
+                  <DraggableCard
+                    id={p.id}
+                    title={p.title}
+                    price={unitCentsById[p.id]}
+                    disabled={sealed}
+                  />
+                </div>
+              ))}
+            </DropColumn>
+
+            <DropColumn
+              colId="pas_important"
+              label="Pas important"
+              subtitle="Produits écartés · aucun impact sur le paiement"
+              accent="var(--border-md)"
+              count={byCol.pas_important.length}
+              icon={<MinusCircle size={18} color="var(--text-tertiary)" strokeWidth={1.8} />}
+            >
+              {byCol.pas_important.map((p) => (
+                <div
+                  key={p.id}
+                  onDoubleClick={() => toggle(p.id)}
+                  title="Double-cliquez pour déplacer"
+                >
+                  <DraggableCard
+                    id={p.id}
+                    title={p.title}
+                    price={unitCentsById[p.id]}
+                    dim
+                    disabled={sealed}
+                  />
+                </div>
+              ))}
+            </DropColumn>
           </div>
+
+          <DragOverlay dropAnimation={{ duration: 180 }}>
+            {activeProduct ? (
+              <div
+                style={{
+                  padding: '0.85rem 1rem',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--or-500)',
+                  borderRadius: 'var(--r-md)',
+                  fontWeight: 600,
+                  boxShadow: '0 18px 48px rgba(0,0,0,0.22)',
+                  minWidth: 240,
+                }}
+              >
+                {activeProduct.title}
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
 
-        <div
-          style={{
-            display:  'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap:      8,
-            borderTop: '1px solid var(--border-hair)',
-            paddingTop: 20,
-            marginTop: 8,
-          }}
-        >
-          <span className="overline" style={{ marginRight: 8 }}>Sceller le choix client</span>
-          {(['essentiel', 'recommande', 'premium']).map((k) => (
-            <Button
-              key={k}
-              variant={choice === k ? 'primary' : 'secondary'}
-              size="sm"
-              icon={<Check size={14} />}
-              disabled={sealed}
-              onClick={() => {
-                setChoice(/** @type {any} */ (k));
-                void seal(/** @type {any} */ (k));
-              }}
-            >
-              {COL_LABELS[k]}
-            </Button>
-          ))}
+        {/* ── Partage ── */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: 12,
+          padding: '1rem 0 0',
+          borderTop: '1px solid var(--border-hair)',
+        }}>
           <Button
             size="sm"
             variant="secondary"
@@ -391,11 +653,19 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
             onClick={makeShareLink}
             disabled={publishing}
           >
-            {publishing ? 'Lien…' : 'Générer un lien de partage'}
+            {publishing ? 'Génération…' : 'Générer un lien client'}
           </Button>
           {shareUrl && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--forest-600)', wordBreak: 'break-all', flex: 1, minWidth: 0 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              flex: 1, minWidth: 0, flexWrap: 'wrap',
+            }}>
+              <span style={{
+                fontSize: 'var(--fs-xs)',
+                color: 'var(--forest-600)',
+                wordBreak: 'break-all',
+                flex: 1, minWidth: 0,
+              }}>
                 {shareUrl}
               </span>
               <Button
@@ -409,15 +679,29 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
               </Button>
             </div>
           )}
+          {sealed && (
+            <span style={{
+              marginLeft: 'auto',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              color: 'var(--forest-600)',
+              fontSize: 'var(--fs-sm)',
+              fontWeight: 500,
+            }}>
+              <Check size={14} /> Choix scellé
+            </span>
+          )}
         </div>
-
-        {choice && (
-          <p style={{ marginTop: 16, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-            <Sparkles size={14} style={{ display: 'inline', verticalAlign: 'middle' }} />
-            &nbsp;Choix enregistré : <strong>{COL_LABELS[choice]}</strong>
-          </p>
-        )}
       </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .menu-2col-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

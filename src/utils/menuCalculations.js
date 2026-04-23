@@ -118,6 +118,31 @@ export function displayColumnCost(financing, addonCents) {
 }
 
 /**
+ * Map intérêt slide → colonne binaire (Important / Pas important)
+ * yes + maybe → important ; no → pas_important
+ * @param {Record<string, any>} responses
+ * @returns {Record<string, 'important'|'pas_important'>}
+ */
+export function defaultBinaryPlacementsFromResponses(responses) {
+  const out = {};
+  Object.entries(responses || {}).forEach(([id, v]) => {
+    const l = getInterest(v);
+    if (l === 'yes' || l === 'maybe') out[id] = 'important';
+    else if (l === 'no') out[id] = 'pas_important';
+  });
+  return out;
+}
+
+/**
+ * IDs dans la colonne "important" (seule qui impacte le total)
+ * @param {Record<string, 'important'|'pas_important'>} placements
+ * @returns {string[]}
+ */
+export function importantProductIds(placements) {
+  return Object.keys(placements || {}).filter((id) => placements[id] === 'important');
+}
+
+/**
  * @returns {number|null}
  */
 export function deltaVersusBase(financing, addonCents) {

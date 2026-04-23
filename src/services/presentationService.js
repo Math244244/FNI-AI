@@ -169,7 +169,11 @@ export async function getUserStats(userId) {
 export function computeAnalytics(presentations) {
   if (!presentations.length) {
     return {
-      total: 0, avgRate: 0, productStats: {}, byMonth: {}, menuChoiceMix: { essentiel: 0, recommande: 0, premium: 0 },
+      total: 0,
+      avgRate: 0,
+      productStats: {},
+      byMonth: {},
+      menuMix: { sealed: 0, avgImportantCount: 0, avgImportantShare: 0 },
     };
   }
 
@@ -178,11 +182,25 @@ export function computeAnalytics(presentations) {
     presentations.reduce((s, p) => s + (p.protectionRate || 0), 0) / total
   );
 
-  const menuChoiceMix = { essentiel: 0, recommande: 0, premium: 0 };
+  // Menu binaire : on mesure la part moyenne de produits "important" après scellé
+  let sealed = 0;
+  let sumImportant = 0;
+  let sumTotal = 0;
   presentations.forEach((p) => {
-    const c = p.menuFinal?.clientChoice;
-    if (c && c in menuChoiceMix) menuChoiceMix[c]++;
+    const mf = p.menuFinal;
+    if (!mf?.placements) return;
+    sealed++;
+    const values = Object.values(mf.placements);
+    const totalP = values.length;
+    const imp = values.filter((v) => v === 'important').length;
+    sumImportant += imp;
+    sumTotal += totalP;
   });
+  const menuMix = {
+    sealed,
+    avgImportantCount: sealed ? Math.round(sumImportant / sealed) : 0,
+    avgImportantShare: sumTotal ? Math.round((sumImportant / sumTotal) * 100) : 0,
+  };
 
   /* Per-product aggregated stats */
   const productStats = {};
@@ -207,5 +225,5 @@ export function computeAnalytics(presentations) {
     byMonth[key].totalRate += p.protectionRate || 0;
   });
 
-  return { total, avgRate, productStats, byMonth, menuChoiceMix };
+  return { total, avgRate, productStats, byMonth, menuMix };
 }

@@ -200,8 +200,8 @@ export default function PresentationSummary({
 
         {/* KPIs mini */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-          <MiniStat label="Retenus" value={interested.length} tone="green" />
-          <MiniStat label="Déclinés" value={declined.length} tone="red" />
+          <MiniStat label="Important" value={interested.length} tone="green" />
+          <MiniStat label="Pas important" value={declined.length} tone="red" />
           {monthlyTotal > 0 && (
             <div style={{
               gridColumn: '1 / -1',
@@ -228,15 +228,15 @@ export default function PresentationSummary({
           )}
         </div>
 
-        {/* Liste retenus */}
-        <Section title="Retenus" icon={<ThumbsUp size={14} />} tone="green" count={interested.length}>
+        {/* Liste importants */}
+        <Section title="Important" icon={<ThumbsUp size={14} />} tone="green" count={interested.length}>
           {interested.length === 0 ? (
             <Empty label="Aucune protection retenue" />
           ) : interested.map(p => <Row key={p.id} product={p} tone="green" />)}
         </Section>
 
-        {/* Liste déclinés */}
-        <Section title="Déclinés" icon={<ThumbsDown size={14} />} tone="red" count={declined.length}>
+        {/* Liste pas importants */}
+        <Section title="Pas important" icon={<ThumbsDown size={14} />} tone="red" count={declined.length}>
           {declined.length === 0 ? (
             <Empty label="Aucune décision défavorable" />
           ) : declined.map(p => <Row key={p.id} product={p} tone="red" />)}

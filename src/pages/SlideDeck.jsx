@@ -2,17 +2,17 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { usePresentation } from '../context/PresentationContext';
 import { useAuth } from '../context/AuthContext';
-import { CHAPTERS } from '../data/products';
-import { ENRICHED_PRODUCTS } from '../data/productPricing';
+import { CHAPTERS, PRODUCTS } from '../data/products';
+import { ENRICHED_PRODUCTS, enrichProductWithPricing } from '../data/productPricing';
+import { buildMergedProductListFromSettings } from '../utils/dealerSettingsMerge';
 import { loadDealerSettings } from '../services/settingsService';
 import { savePresentation, upsertDraft } from '../services/presentationService';
 import { initSession, updateSession } from '../services/clientViewService';
 import { getInterest, buildResponseV2Entry } from '../utils/responseHelpers';
 import { getEnrichedById, resolvePriceCents } from '../utils/pricingResolver.js';
-import { X, Clock, Keyboard, Check } from 'lucide-react';
+import { X, Clock, Keyboard, Check, Eye, EyeOff } from 'lucide-react';
 
 import BreadcrumbProduct from '../components/slide/BreadcrumbProduct';
-import SlideQuadrant from '../components/slide/SlideQuadrant';
 import VehicleImage from '../components/slide/VehicleImage';
 import HotspotChips, { HotspotDetailPanel } from '../components/slide/HotspotChips';
 import DecisionBar from '../components/slide/DecisionBar';
@@ -40,7 +40,7 @@ export default function SlideDeck() {
   } = usePresentation();
   const { currentUser, userProfile, isDemo } = useAuth();
 
-  const [products]        = useState(ENRICHED_PRODUCTS);
+  const [products, setProducts] = useState(ENRICHED_PRODUCTS);
   const [index, setIndex] = useState(0);
   const [activeHot, setActiveHot] = useState(null);
   const [saving, setSaving]       = useState(false);
@@ -53,6 +53,7 @@ export default function SlideDeck() {
   const [slideTime, setSlideTime] = useState(0);
   const [timePerProd, setTimePerProd] = useState({});
   const [showWelcome, setShowWelcome] = useState(!!clientName);
+  const [priceRevealed, setPriceRevealed] = useState(false);
   const timerRef = useRef(null);
   const draftId = useRef(`draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const sessionId = useRef(`sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
@@ -65,15 +66,26 @@ export default function SlideDeck() {
 
   useEffect(() => {
     (async () => {
-      if (!userProfile?.dealerId) return;
+      if (!userProfile?.dealerId) {
+        // Démo / pas de dealer : utiliser le catalogue de base enrichi
+        setProducts(ENRICHED_PRODUCTS);
+        return;
+      }
       const s = await loadDealerSettings(userProfile.dealerId);
       setDealerSettingsSnapshot(s);
+
+      // Applique l'ordre, les désactivations et les produits custom du dealer.
+      const merged = buildMergedProductListFromSettings(s, PRODUCTS)
+        .filter((p) => p.active !== false)
+        .map((p) => enrichProductWithPricing(p));
+      if (merged.length) setProducts(merged);
     })();
   }, [userProfile?.dealerId, setDealerSettingsSnapshot]);
 
   /* ── Timer slide ── */
   useEffect(() => {
     setSlideTime(0);
+    setPriceRevealed(false);
     timerRef.current = setInterval(() => setSlideTime(t => t + 1), 1000);
     return () => clearInterval(timerRef.current);
   }, [index]);
@@ -254,8 +266,8 @@ export default function SlideDeck() {
   const riskPoints = product.risk?.points || [];
   const solutionPoints = product.solution?.points || [];
 
-  /* Prix mensuel widget */
-  const showPrice = product.monthly_price && transactionType !== 'comptant';
+  /* Prix caché par défaut — bouton "reveal" discret au bas de la slide */
+  const hasPriceData = !!product.monthly_price && transactionType !== 'comptant';
 
   return (
     <div
@@ -345,157 +357,166 @@ export default function SlideDeck() {
         total={total}
       />
 
-      {/* ─── Quadrants (grille 2x2) ─── */}
+      {/* ─── Layout 2 colonnes prestige (texte gauche / véhicule droite) ─── */}
       <div
         key={product.id}
-        className="slide-grid animate-up"
+        className="slide-v2 animate-up"
         role="region"
         aria-label={`Produit ${index + 1} sur ${total} : ${product.title}`}
         aria-live="polite"
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gridTemplateRows: '1fr 1fr',
+          gridTemplateColumns: 'minmax(0, 45fr) minmax(0, 55fr)',
           minHeight: 0,
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
-        {/* Q1 : Hook (haut-gauche) */}
-        <SlideQuadrant watermark={watermark}>
-          <span className="overline" style={{ marginBottom: '0.75rem' }}>
+        {/* Colonne gauche : contenu narratif */}
+        <section
+          className="slide-v2-content"
+          style={{
+            padding: 'clamp(1.5rem, 2.5vw, 2.75rem) clamp(1.5rem, 3vw, 3rem)',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            overflowY: 'auto',
+            borderRight: '1px solid var(--border-hair)',
+            position: 'relative',
+          }}
+        >
+          {/* Watermark chapitre */}
+          <span
+            aria-hidden
+            className="watermark"
+            style={{
+              top: 'clamp(1rem, 2vw, 1.5rem)',
+              right: 'clamp(1.5rem, 2.5vw, 2.5rem)',
+              fontSize: 'clamp(6rem, 12vw, 13rem)',
+              lineHeight: 1,
+            }}
+          >
+            {watermark}
+          </span>
+
+          <span className="overline" style={{ marginBottom: '0.75rem', zIndex: 1 }}>
             Accroche
           </span>
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            fontStyle: 'italic',
-            fontWeight: 500,
-            fontSize: 'clamp(1.75rem, 2.2vw, 2.125rem)',
-            lineHeight: 1.15,
-            letterSpacing: '-0.015em',
-            color: 'var(--text-primary)',
-            margin: 0,
-          }}>
+          <h1
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontStyle: 'italic',
+              fontWeight: 500,
+              fontSize: 'clamp(1.9rem, 2.6vw, 2.6rem)',
+              lineHeight: 1.12,
+              letterSpacing: '-0.02em',
+              color: 'var(--text-primary)',
+              margin: 0,
+              zIndex: 1,
+            }}
+          >
             {product.hook?.headline}
           </h1>
           {product.hook?.text && (
-            <p style={{
-              marginTop: '1rem',
-              fontSize: 'clamp(1rem, 1.15vw, 1.125rem)',
-              lineHeight: 1.7,
-              color: 'var(--text-secondary)',
-              maxWidth: '52ch',
-            }}>
+            <p
+              style={{
+                marginTop: '1rem',
+                fontSize: 'clamp(1rem, 1.15vw, 1.125rem)',
+                lineHeight: 1.65,
+                color: 'var(--text-secondary)',
+                maxWidth: '58ch',
+                zIndex: 1,
+              }}
+            >
               {product.hook.text}
             </p>
           )}
 
-          {product.presenter_note && (
-            <div
-              className="presenter-note"
-              style={{
-                marginTop: 'auto',
-                padding: '0.7rem 0.9rem',
-                background: 'var(--or-100)',
-                border: '1px dashed var(--border-warm)',
-                borderRadius: 'var(--r-sm)',
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--or-900)',
-                lineHeight: 1.5,
-                fontStyle: 'italic',
-              }}
-            >
-              <strong style={{ fontStyle: 'normal', fontWeight: 600 }}>Note directeur —</strong>{' '}
-              {product.presenter_note}
-            </div>
-          )}
-        </SlideQuadrant>
-
-        {/* Q2 : Véhicule (haut-droite, ANCRAGE FIXE) */}
-        <SlideQuadrant variant="subtle" style={{ padding: '1.25rem 1.5rem' }}>
-          <div style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: 0,
-            position: 'relative',
-          }}>
-            <div style={{ width: '100%', height: '100%', maxWidth: 520, maxHeight: '100%' }}>
-              <VehicleImage
-                year={vehicle?.year}
-                make={vehicle?.make}
-                model={vehicle?.model}
-                category={vehicle?.category}
-                angle={23}
-                width={900}
-                alt={`${vehicle?.year || ''} ${vehicle?.make || ''} ${vehicle?.model || ''}`}
-              />
-            </div>
-          </div>
-          {dots.length > 0 && (
-            <div style={{ marginTop: '0.5rem' }}>
-              <HotspotChips
-                dots={dots}
-                activeIndex={activeHot}
-                onSelect={setActiveHot}
-              />
-            </div>
-          )}
-        </SlideQuadrant>
-
-        {/* Q3 : Risque sans protection (bas-gauche) */}
-        <SlideQuadrant variant="default" style={{ background: 'var(--ivoire-50)' }}>
-          <span className="overline" style={{ color: 'var(--crimson-500)', marginBottom: '0.5rem' }}>
-            Sans protection
-          </span>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {riskPoints.map((p, i) => (
-              <li
-                key={i}
-                className="slide-bullet"
+          {/* Deux blocs sans/avec protection — côte à côte si large, empilés sinon */}
+          <div
+            className="slide-v2-compare"
+            style={{
+              marginTop: '1.75rem',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '1rem 1.5rem',
+              zIndex: 1,
+            }}
+          >
+            <div>
+              <span
+                className="overline"
+                style={{ color: 'var(--crimson-500)', marginBottom: '0.5rem' }}
+              >
+                Sans protection
+              </span>
+              <ul
                 style={{
+                  listStyle: 'none',
+                  padding: 0,
+                  margin: 0,
                   display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  fontSize: 'clamp(1rem, 1.2vw, 1.1875rem)',
-                  lineHeight: 1.55,
-                  color: 'var(--text-primary)',
-                  fontVariantNumeric: 'tabular-nums',
-                  animation: `fadeUp 0.4s var(--ease-out) both`,
-                  animationDelay: `${60 + i * 60}ms`,
+                  flexDirection: 'column',
+                  gap: '0.6rem',
                 }}
               >
-                <span aria-hidden style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minWidth: 22, height: 22,
-                  marginTop: 4,
-                  borderRadius: '50%',
-                  background: 'var(--danger-light)',
-                  color: 'var(--crimson-500)',
-                  fontSize: 11, fontWeight: 700,
-                  border: '1px solid var(--danger-border)',
-                }}>×</span>
-                <span>{p}</span>
-              </li>
-            ))}
-          </ul>
-        </SlideQuadrant>
+                {riskPoints.map((p, i) => (
+                  <li
+                    key={i}
+                    className="slide-bullet"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                      fontSize: 'clamp(0.95rem, 1.05vw, 1.05rem)',
+                      lineHeight: 1.5,
+                      color: 'var(--text-primary)',
+                      animation: `fadeUp 0.4s var(--ease-out) both`,
+                      animationDelay: `${60 + i * 60}ms`,
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: 22,
+                        height: 22,
+                        marginTop: 2,
+                        borderRadius: '50%',
+                        background: 'var(--danger-light)',
+                        color: 'var(--crimson-500)',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        border: '1px solid var(--danger-border)',
+                      }}
+                    >
+                      ×
+                    </span>
+                    <span>{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-        {/* Q4 : Solution + prix mensuel (bas-droite) */}
-        <SlideQuadrant variant="default">
-          {activeHot !== null && dots[activeHot] ? (
-            <HotspotDetailPanel
-              dot={dots[activeHot]}
-              onClose={() => setActiveHot(null)}
-            />
-          ) : (
-            <>
-              <span className="overline" style={{ color: 'var(--forest-600)', marginBottom: '0.5rem' }}>
+            <div>
+              <span
+                className="overline"
+                style={{ color: 'var(--forest-600)', marginBottom: '0.5rem' }}
+              >
                 Avec Avantage Plus
               </span>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <ul
+                style={{
+                  listStyle: 'none',
+                  padding: 0,
+                  margin: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.6rem',
+                }}
+              >
                 {solutionPoints.map((p, i) => (
                   <li
                     key={i}
@@ -503,73 +524,203 @@ export default function SlideDeck() {
                       display: 'flex',
                       alignItems: 'flex-start',
                       gap: 10,
-                      fontSize: 'clamp(1rem, 1.2vw, 1.1875rem)',
-                      lineHeight: 1.55,
+                      fontSize: 'clamp(0.95rem, 1.05vw, 1.05rem)',
+                      lineHeight: 1.5,
                       color: 'var(--text-primary)',
                       animation: `fadeUp 0.4s var(--ease-out) both`,
                       animationDelay: `${60 + i * 60}ms`,
                     }}
                   >
-                    <span aria-hidden style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: 22, height: 22,
-                      marginTop: 4,
-                      borderRadius: '50%',
-                      background: 'var(--brand-green-light)',
-                      color: 'var(--forest-600)',
-                      border: '1px solid var(--brand-green-border)',
-                    }}>
+                    <span
+                      aria-hidden
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: 22,
+                        height: 22,
+                        marginTop: 2,
+                        borderRadius: '50%',
+                        background: 'var(--brand-green-light)',
+                        color: 'var(--forest-600)',
+                        border: '1px solid var(--brand-green-border)',
+                      }}
+                    >
                       <Check size={12} strokeWidth={3} />
                     </span>
                     <span>{p}</span>
                   </li>
                 ))}
               </ul>
+            </div>
+          </div>
 
-              <TierSelector
-                product={product}
-                dealerSettings={dealerSettingsSnapshot}
-                tierId={tierIdFromResp}
-                onChange={(tid, gId) => {
-                  const e = getEnrichedById(product.id) || product;
-                  const pc = resolvePriceCents(e, dealerSettingsSnapshot, tid, gId);
-                  updateResponse(product.id, { tierId: tid, priceCents: pc });
-                }}
-              />
+          {/* Palier de couverture (si applicable) */}
+          <div style={{ marginTop: '1.25rem', zIndex: 1 }}>
+            <TierSelector
+              product={product}
+              dealerSettings={dealerSettingsSnapshot}
+              tierId={tierIdFromResp}
+              onChange={(tid, gId) => {
+                const e = getEnrichedById(product.id) || product;
+                const pc = resolvePriceCents(e, dealerSettingsSnapshot, tid, gId);
+                updateResponse(product.id, { tierId: tid, priceCents: pc });
+              }}
+            />
+          </div>
 
-              {showPrice && (
-                <div style={{
-                  marginTop: 'auto',
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  padding: '0.85rem 1rem',
-                  borderTop: '1px solid var(--border-hair)',
-                  background: 'linear-gradient(180deg, transparent, var(--or-100))',
+          {/* Note directeur — lisible, contraste fort */}
+          {product.presenter_note && (
+            <div
+              className="presenter-note"
+              style={{
+                marginTop: '1.25rem',
+                padding: '0.85rem 1rem',
+                background: 'rgba(255, 248, 230, 0.85)',
+                border: '1px solid var(--or-500)',
+                borderLeft: '3px solid var(--or-700)',
+                borderRadius: 'var(--r-sm)',
+                fontSize: 'var(--fs-sm)',
+                color: '#4a2f00',
+                lineHeight: 1.55,
+                zIndex: 1,
+              }}
+            >
+              <strong style={{ fontWeight: 700, color: 'var(--or-900)' }}>
+                Note directeur —
+              </strong>{' '}
+              <span style={{ fontStyle: 'italic' }}>{product.presenter_note}</span>
+            </div>
+          )}
+
+          {/* Reveal prix discret (jamais affiché par défaut) */}
+          {hasPriceData && (
+            <div
+              style={{
+                marginTop: 'auto',
+                paddingTop: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                zIndex: 1,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setPriceRevealed((v) => !v)}
+                aria-expanded={priceRevealed}
+                className="btn-ghost"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '0.45rem 0.8rem',
+                  fontSize: 'var(--fs-xs)',
+                  fontWeight: 500,
+                  color: 'var(--text-tertiary)',
+                  border: '1px dashed var(--border-md)',
                   borderRadius: 'var(--r-sm)',
-                }}>
-                  <span className="overline" style={{ marginBottom: 0, color: 'var(--or-900)' }}>
-                    Estimation{transactionType === 'location' ? ' (location)' : ''}
-                  </span>
-                  <span style={{
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  transition: 'var(--tx)',
+                }}
+              >
+                {priceRevealed
+                  ? <><EyeOff size={12} /> Masquer l’estimation</>
+                  : <><Eye size={12} /> Afficher l’estimation (vendeur)</>}
+              </button>
+              {priceRevealed && (
+                <span
+                  style={{
                     fontFamily: 'var(--font-display)',
                     fontStyle: 'italic',
                     fontWeight: 600,
-                    fontSize: 'clamp(1.5rem, 2.2vw, 2rem)',
-                    color: 'var(--text-primary)',
+                    fontSize: 'var(--fs-lg)',
+                    color: 'var(--text-secondary)',
                     fontVariantNumeric: 'tabular-nums',
                     letterSpacing: '-0.01em',
-                  }}>
-                    {currencyMonthly(product.monthly_price)}
+                  }}
+                >
+                  {currencyMonthly(product.monthly_price)}
+                  <span
+                    style={{
+                      fontSize: 'var(--fs-xs)',
+                      color: 'var(--text-tertiary)',
+                      fontStyle: 'normal',
+                      marginLeft: 6,
+                    }}
+                  >
+                    (aide vendeur)
                   </span>
+                </span>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Colonne droite : visuel véhicule GRAND */}
+        <section
+          className="slide-v2-visual"
+          style={{
+            background: 'linear-gradient(160deg, var(--bg-subtle) 0%, var(--bg-card) 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            padding: 'clamp(1.5rem, 2.5vw, 2.5rem)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          {activeHot !== null && dots[activeHot] ? (
+            <HotspotDetailPanel
+              dot={dots[activeHot]}
+              onClose={() => setActiveHot(null)}
+            />
+          ) : (
+            <>
+              <div
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 0,
+                  position: 'relative',
+                }}
+              >
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    filter: 'drop-shadow(0 30px 60px rgba(0,0,0,0.15))',
+                  }}
+                >
+                  <VehicleImage
+                    year={vehicle?.year}
+                    make={vehicle?.make}
+                    model={vehicle?.model}
+                    category={vehicle?.category}
+                    angle={23}
+                    width={1400}
+                    alt={`${vehicle?.year || ''} ${vehicle?.make || ''} ${vehicle?.model || ''}`}
+                  />
+                </div>
+              </div>
+
+              {dots.length > 0 && (
+                <div style={{ marginTop: '0.75rem', flexShrink: 0 }}>
+                  <HotspotChips
+                    dots={dots}
+                    activeIndex={activeHot}
+                    onSelect={setActiveHot}
+                  />
                 </div>
               )}
             </>
           )}
-        </SlideQuadrant>
+        </section>
       </div>
 
       {/* ─── Decision bar 96px ─── */}
@@ -617,28 +768,24 @@ export default function SlideDeck() {
       />
 
       <style>{`
-        @media (max-width: 960px) {
-          .slide-grid {
+        @media (max-width: 1100px) {
+          .slide-v2 {
             grid-template-columns: 1fr !important;
-            grid-template-rows: auto auto auto auto !important;
+            grid-template-rows: minmax(260px, 40vh) 1fr !important;
           }
-          .slide-deck .slide-grid > section {
+          .slide-v2-content {
+            order: 2;
             border-right: none !important;
-            border-bottom: 1px solid var(--border-hair) !important;
+            border-top: 1px solid var(--border-hair);
           }
-          .slide-deck .slide-grid > section:last-child {
-            border-bottom: none !important;
+          .slide-v2-visual {
+            order: 1;
           }
         }
-        /* Dividers internes uniquement : Q1 (haut-gauche) et Q3 (bas-gauche) ont
-           une bordure droite ; Q1 et Q2 ont une bordure basse. */
-        .slide-deck .slide-grid > section:nth-child(1),
-        .slide-deck .slide-grid > section:nth-child(3) {
-          border-right: 1px solid var(--border-hair);
-        }
-        .slide-deck .slide-grid > section:nth-child(1),
-        .slide-deck .slide-grid > section:nth-child(2) {
-          border-bottom: 1px solid var(--border-hair);
+        @media (max-width: 700px) {
+          .slide-v2-compare {
+            grid-template-columns: 1fr !important;
+          }
         }
       `}</style>
     </div>

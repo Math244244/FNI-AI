@@ -142,13 +142,13 @@ export default function Reports() {
               ))}
             </div>
 
-            {filteredAnalytics?.menuChoiceMix && (
+            {filteredAnalytics?.menuMix && filteredAnalytics.menuMix.sealed > 0 && (
               <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
-                <div className="overline" style={{ marginBottom: 8 }}>Mix menu (choix client scellé)</div>
+                <div className="overline" style={{ marginBottom: 8 }}>Mix menu binaire (scellé)</div>
                 <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.875rem' }}>
-                  <span>Essentiel : <strong>{filteredAnalytics.menuChoiceMix.essentiel}</strong></span>
-                  <span>Recommandé : <strong>{filteredAnalytics.menuChoiceMix.recommande}</strong></span>
-                  <span>Premium : <strong>{filteredAnalytics.menuChoiceMix.premium}</strong></span>
+                  <span>Menus scellés : <strong>{filteredAnalytics.menuMix.sealed}</strong></span>
+                  <span>Moyenne « Important » : <strong>{filteredAnalytics.menuMix.avgImportantCount}</strong> produits</span>
+                  <span>Part retenue : <strong>{filteredAnalytics.menuMix.avgImportantShare}%</strong></span>
                 </div>
               </div>
             )}
