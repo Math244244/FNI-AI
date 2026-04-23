@@ -10,7 +10,7 @@ import { savePresentation, upsertDraft } from '../services/presentationService';
 import { initSession, updateSession } from '../services/clientViewService';
 import { getInterest, buildResponseV2Entry } from '../utils/responseHelpers';
 import { getEnrichedById, resolvePriceCents } from '../utils/pricingResolver.js';
-import { X, Clock, Keyboard, Check, Eye, EyeOff } from 'lucide-react';
+import { X, Clock, Keyboard, Check } from 'lucide-react';
 
 import BreadcrumbProduct from '../components/slide/BreadcrumbProduct';
 import VehicleImage from '../components/slide/VehicleImage';
@@ -22,8 +22,6 @@ import Button from '../components/ui/Button';
 import Kbd from '../components/ui/Kbd';
 import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts';
 import useMinimumSlideTime from '../hooks/useMinimumSlideTime';
-import { currencyMonthly } from '../utils/typograph';
-
 import PresentationSummary from './PresentationSummary';
 import MenuSelling from './MenuSelling';
 import WelcomeScreen from './WelcomeScreen';
@@ -35,7 +33,7 @@ const MIN_SLIDE_SECONDS = parseInt(
 export default function SlideDeck() {
   const navigate = useNavigate();
   const {
-    vehicle, clientName, transactionType, clearSession, mode, financing, responses, setResponses,
+    vehicle, clientName, clearSession, mode, financing, responses, setResponses,
     dealerSettingsSnapshot, setDealerSettingsSnapshot, updateResponse, excludedProductIds,
   } = usePresentation();
   const { currentUser, userProfile, isDemo } = useAuth();
@@ -61,7 +59,6 @@ export default function SlideDeck() {
   const [slideTime, setSlideTime] = useState(0);
   const [timePerProd, setTimePerProd] = useState({});
   const [showWelcome, setShowWelcome] = useState(!!clientName);
-  const [priceRevealed, setPriceRevealed] = useState(false);
   const timerRef = useRef(null);
   const draftId = useRef(`draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const sessionId = useRef(`sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
@@ -93,7 +90,6 @@ export default function SlideDeck() {
   /* ── Timer slide ── */
   useEffect(() => {
     setSlideTime(0);
-    setPriceRevealed(false);
     timerRef.current = setInterval(() => setSlideTime(t => t + 1), 1000);
     return () => clearInterval(timerRef.current);
   }, [index]);
@@ -133,13 +129,6 @@ export default function SlideDeck() {
     }
     setPostDeck('menu');
   }, [responses, timePerProd, product, slideTime, isDemo, currentUser, userProfile, vehicle, clientName, mode, financing]);
-
-  const goNext = useCallback(() => {
-    if (!canProceed) return;
-    saveSlideTime();
-    if (index < total - 1) { setIndex(i => i + 1); setActiveHot(null); }
-    else { void handleFinish(); }
-  }, [canProceed, saveSlideTime, index, total, handleFinish]);
 
   const goPrev = useCallback(() => {
     saveSlideTime();
@@ -190,7 +179,6 @@ export default function SlideDeck() {
   /* ── Raccourcis clavier ── */
   const bindings = useMemo(() => ({
     'ArrowLeft':  () => goPrev(),
-    'ArrowRight': () => goNext(),
     'v': () => respond('yes'),
     'V': () => respond('yes'),
     'r': () => respond('no'),
@@ -200,7 +188,7 @@ export default function SlideDeck() {
     'f': () => { if (document.fullscreenEnabled) {
       document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
     }},
-  }), [goPrev, goNext, respond]);
+  }), [goPrev, respond]);
   useKeyboardShortcuts(bindings, postDeck === 'slides' && !showQuit);
 
   /* ── Préchargement image véhicule ── */
@@ -274,16 +262,13 @@ export default function SlideDeck() {
   const riskPoints = product.risk?.points || [];
   const solutionPoints = product.solution?.points || [];
 
-  /* Prix caché par défaut — bouton "reveal" discret au bas de la slide */
-  const hasPriceData = !!product.monthly_price && transactionType !== 'comptant';
-
   return (
     <div
       className="slide-deck"
       style={{
         minHeight: '100vh',
         display: 'grid',
-        gridTemplateRows: '56px 48px 1fr 96px',
+        gridTemplateRows: '56px 48px 1fr 108px',
         background: 'var(--bg-page)',
         color: 'var(--text-primary)',
       }}
@@ -407,7 +392,15 @@ export default function SlideDeck() {
             {watermark}
           </span>
 
-          <span className="overline" style={{ marginBottom: '0.75rem', zIndex: 1 }}>
+          <span
+            className="overline"
+            style={{
+              marginBottom: '0.9rem',
+              zIndex: 1,
+              fontSize: 'clamp(0.8rem, 0.95vw, 0.95rem)',
+              letterSpacing: '0.12em',
+            }}
+          >
             Accroche
           </span>
           <h1
@@ -415,8 +408,8 @@ export default function SlideDeck() {
               fontFamily: 'var(--font-display)',
               fontStyle: 'italic',
               fontWeight: 500,
-              fontSize: 'clamp(1.9rem, 2.6vw, 2.6rem)',
-              lineHeight: 1.12,
+              fontSize: 'clamp(2.4rem, 3.4vw, 3.6rem)',
+              lineHeight: 1.08,
               letterSpacing: '-0.02em',
               color: 'var(--text-primary)',
               margin: 0,
@@ -428,9 +421,9 @@ export default function SlideDeck() {
           {product.hook?.text && (
             <p
               style={{
-                marginTop: '1rem',
-                fontSize: 'clamp(1rem, 1.15vw, 1.125rem)',
-                lineHeight: 1.65,
+                marginTop: '1.25rem',
+                fontSize: 'clamp(1.15rem, 1.35vw, 1.35rem)',
+                lineHeight: 1.6,
                 color: 'var(--text-secondary)',
                 maxWidth: '58ch',
                 zIndex: 1,
@@ -444,17 +437,22 @@ export default function SlideDeck() {
           <div
             className="slide-v2-compare"
             style={{
-              marginTop: '1.75rem',
+              marginTop: '2rem',
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              gap: '1rem 1.5rem',
+              gap: '1.25rem 2rem',
               zIndex: 1,
             }}
           >
             <div>
               <span
                 className="overline"
-                style={{ color: 'var(--crimson-500)', marginBottom: '0.5rem' }}
+                style={{
+                  color: 'var(--crimson-500)',
+                  marginBottom: '0.75rem',
+                  fontSize: 'clamp(0.85rem, 1vw, 1rem)',
+                  letterSpacing: '0.12em',
+                }}
               >
                 Sans protection
               </span>
@@ -465,7 +463,7 @@ export default function SlideDeck() {
                   margin: 0,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '0.6rem',
+                  gap: '0.85rem',
                 }}
               >
                 {riskPoints.map((p, i) => (
@@ -475,8 +473,8 @@ export default function SlideDeck() {
                     style={{
                       display: 'flex',
                       alignItems: 'flex-start',
-                      gap: 10,
-                      fontSize: 'clamp(0.95rem, 1.05vw, 1.05rem)',
+                      gap: 12,
+                      fontSize: 'clamp(1.1rem, 1.25vw, 1.3rem)',
                       lineHeight: 1.5,
                       color: 'var(--text-primary)',
                       animation: `fadeUp 0.4s var(--ease-out) both`,
@@ -489,13 +487,13 @@ export default function SlideDeck() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        minWidth: 22,
-                        height: 22,
+                        minWidth: 26,
+                        height: 26,
                         marginTop: 2,
                         borderRadius: '50%',
                         background: 'var(--danger-light)',
                         color: 'var(--crimson-500)',
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: 700,
                         border: '1px solid var(--danger-border)',
                       }}
@@ -511,7 +509,12 @@ export default function SlideDeck() {
             <div>
               <span
                 className="overline"
-                style={{ color: 'var(--forest-600)', marginBottom: '0.5rem' }}
+                style={{
+                  color: 'var(--forest-600)',
+                  marginBottom: '0.75rem',
+                  fontSize: 'clamp(0.85rem, 1vw, 1rem)',
+                  letterSpacing: '0.12em',
+                }}
               >
                 Avec Avantage Plus
               </span>
@@ -522,7 +525,7 @@ export default function SlideDeck() {
                   margin: 0,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '0.6rem',
+                  gap: '0.85rem',
                 }}
               >
                 {solutionPoints.map((p, i) => (
@@ -531,8 +534,8 @@ export default function SlideDeck() {
                     style={{
                       display: 'flex',
                       alignItems: 'flex-start',
-                      gap: 10,
-                      fontSize: 'clamp(0.95rem, 1.05vw, 1.05rem)',
+                      gap: 12,
+                      fontSize: 'clamp(1.1rem, 1.25vw, 1.3rem)',
                       lineHeight: 1.5,
                       color: 'var(--text-primary)',
                       animation: `fadeUp 0.4s var(--ease-out) both`,
@@ -545,8 +548,8 @@ export default function SlideDeck() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        minWidth: 22,
-                        height: 22,
+                        minWidth: 26,
+                        height: 26,
                         marginTop: 2,
                         borderRadius: '50%',
                         background: 'var(--brand-green-light)',
@@ -554,7 +557,7 @@ export default function SlideDeck() {
                         border: '1px solid var(--brand-green-border)',
                       }}
                     >
-                      <Check size={12} strokeWidth={3} />
+                      <Check size={14} strokeWidth={3} />
                     </span>
                     <span>{p}</span>
                   </li>
@@ -582,13 +585,13 @@ export default function SlideDeck() {
             <div
               className="presenter-note"
               style={{
-                marginTop: '1.25rem',
-                padding: '0.85rem 1rem',
+                marginTop: '1.5rem',
+                padding: '1rem 1.15rem',
                 background: 'rgba(255, 248, 230, 0.85)',
                 border: '1px solid var(--or-500)',
                 borderLeft: '3px solid var(--or-700)',
                 borderRadius: 'var(--r-sm)',
-                fontSize: 'var(--fs-sm)',
+                fontSize: 'clamp(0.95rem, 1.05vw, 1.05rem)',
                 color: '#4a2f00',
                 lineHeight: 1.55,
                 zIndex: 1,
@@ -598,70 +601,6 @@ export default function SlideDeck() {
                 Note directeur —
               </strong>{' '}
               <span style={{ fontStyle: 'italic' }}>{product.presenter_note}</span>
-            </div>
-          )}
-
-          {/* Reveal prix discret (jamais affiché par défaut) */}
-          {hasPriceData && (
-            <div
-              style={{
-                marginTop: 'auto',
-                paddingTop: '1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                zIndex: 1,
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setPriceRevealed((v) => !v)}
-                aria-expanded={priceRevealed}
-                className="btn-ghost"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '0.45rem 0.8rem',
-                  fontSize: 'var(--fs-xs)',
-                  fontWeight: 500,
-                  color: 'var(--text-tertiary)',
-                  border: '1px dashed var(--border-md)',
-                  borderRadius: 'var(--r-sm)',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  transition: 'var(--tx)',
-                }}
-              >
-                {priceRevealed
-                  ? <><EyeOff size={12} /> Masquer l’estimation</>
-                  : <><Eye size={12} /> Afficher l’estimation (vendeur)</>}
-              </button>
-              {priceRevealed && (
-                <span
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontStyle: 'italic',
-                    fontWeight: 600,
-                    fontSize: 'var(--fs-lg)',
-                    color: 'var(--text-secondary)',
-                    fontVariantNumeric: 'tabular-nums',
-                    letterSpacing: '-0.01em',
-                  }}
-                >
-                  {currencyMonthly(product.monthly_price)}
-                  <span
-                    style={{
-                      fontSize: 'var(--fs-xs)',
-                      color: 'var(--text-tertiary)',
-                      fontStyle: 'normal',
-                      marginLeft: 6,
-                    }}
-                  >
-                    (aide vendeur)
-                  </span>
-                </span>
-              )}
             </div>
           )}
         </section>
@@ -731,15 +670,12 @@ export default function SlideDeck() {
         </section>
       </div>
 
-      {/* ─── Decision bar 96px ─── */}
+      {/* ─── Decision bar (pas de bouton « Suivant » : choix obligatoire) ─── */}
       <DecisionBar
         interest={interestLevel}
         onYes={() => respond('yes')}
         onNo={() => respond('no')}
         onPrev={index > 0 ? goPrev : null}
-        onNext={goNext}
-        canProceed={canProceed}
-        isLast={index === total - 1}
         gateFraction={gateFraction}
       />
 
@@ -754,7 +690,6 @@ export default function SlideDeck() {
           <Row k="V" label="Important" />
           <Row k="R" label="Pas important" />
           <Row k="←" label="Produit précédent" />
-          <Row k="→" label="Produit suivant" />
           <Row k="F" label="Plein écran" />
           <Row k="?" label="Afficher cette aide" />
           <Row k="Esc" label="Fermer" />

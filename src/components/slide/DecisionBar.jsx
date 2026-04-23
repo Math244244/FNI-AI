@@ -1,33 +1,31 @@
 import React from 'react';
-import { ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, ChevronLeft, Check } from 'lucide-react';
 import Kbd from '../ui/Kbd';
 
 /**
- * DecisionBar — 2 gros boutons binaires Important / Pas important + Prev/Next ghost.
+ * DecisionBar — 2 gros boutons binaires Important / Pas important.
+ * Le bouton "Suivant" a été retiré afin de forcer le vendeur/client à
+ * prendre une décision sur chaque produit avant de passer au suivant.
  * interest: 'yes' | 'no' | undefined
- * canProceed: true si le gate de temps min est passé (pour unlock la navigation)
  */
 export default function DecisionBar({
   interest,
   onYes,
   onNo,
   onPrev,
-  onNext,
-  canProceed = true,
-  isLast = false,
   gateFraction = 1,
 }) {
   return (
     <div
       style={{
-        height: 96,
+        height: 108,
         padding: '0 2rem',
         background: 'var(--bg-card)',
         borderTop: '1px solid var(--border-hair)',
         display: 'grid',
-        gridTemplateColumns: '160px 1fr 160px',
+        gridTemplateColumns: '180px 1fr 180px',
         alignItems: 'center',
-        gap: 16,
+        gap: 20,
         position: 'relative',
       }}
     >
@@ -55,7 +53,7 @@ export default function DecisionBar({
         </div>
       )}
 
-      {/* Gauche : Prev */}
+      {/* Gauche : Prev (seul élément restant à gauche) */}
       <button
         onClick={onPrev}
         disabled={!onPrev}
@@ -63,7 +61,7 @@ export default function DecisionBar({
           display: 'inline-flex',
           alignItems: 'center',
           gap: 8,
-          padding: '0.7rem 1rem',
+          padding: '0.75rem 1.1rem',
           background: 'transparent',
           color: 'var(--text-secondary)',
           border: '1px solid var(--border-md)',
@@ -79,13 +77,13 @@ export default function DecisionBar({
         <ChevronLeft size={16} /> Précédent
       </button>
 
-      {/* Centre : 2 gros boutons */}
+      {/* Centre : 2 gros boutons de décision (OBLIGATOIRES) */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: 18,
-          maxWidth: 720,
+          gap: 22,
+          maxWidth: 820,
           margin: '0 auto',
           width: '100%',
         }}
@@ -96,7 +94,7 @@ export default function DecisionBar({
           onClick={onNo}
           label="Pas important"
           shortcut="R"
-          icon={<ThumbsDown size={20} />}
+          icon={<ThumbsDown size={22} />}
         />
         <BigDecisionButton
           kind="yes"
@@ -104,34 +102,27 @@ export default function DecisionBar({
           onClick={onYes}
           label="Important"
           shortcut="V"
-          icon={<ThumbsUp size={20} />}
+          icon={<ThumbsUp size={22} />}
         />
       </div>
 
-      {/* Droite : Next */}
-      <button
-        onClick={onNext}
-        disabled={!canProceed}
-        title={canProceed ? '' : 'Patientez le temps minimum par produit…'}
+      {/* Droite : hint discret (pas de bouton Suivant) */}
+      <div
+        aria-hidden
         style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '0.7rem 1rem',
-          background: canProceed ? 'var(--graphite-900)' : 'var(--graphite-200)',
-          color: canProceed ? 'var(--ivoire-100)' : 'var(--graphite-400)',
-          border: 'none',
-          borderRadius: 'var(--r-md)',
-          fontSize: 'var(--fs-sm)',
-          fontWeight: 600,
-          cursor: canProceed ? 'pointer' : 'not-allowed',
-          boxShadow: canProceed ? 'var(--shadow-sm)' : 'none',
-          transition: 'var(--tx)',
           justifySelf: 'end',
+          fontSize: '11px',
+          color: 'var(--text-tertiary)',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          textAlign: 'right',
+          lineHeight: 1.4,
+          maxWidth: 160,
         }}
       >
-        {isLast ? 'Terminer' : 'Suivant'} <ChevronRight size={16} />
-      </button>
+        Choisissez<br />
+        pour continuer
+      </div>
     </div>
   );
 }
@@ -151,17 +142,17 @@ function BigDecisionButton({ kind, active, onClick, label, shortcut, icon }) {
       aria-pressed={active}
       aria-label={`${label} (${shortcut})`}
       style={{
-        height: 72,
+        height: 84,
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 12,
-        padding: '0 1.25rem',
+        gap: 14,
+        padding: '0 1.5rem',
         background: active ? bgActive : bgIdle,
         color: active ? txtActive : txtIdle,
         border: `2px solid ${borderC}`,
         borderRadius: 'var(--r-lg)',
-        fontSize: 'var(--fs-md)',
+        fontSize: 'clamp(1.05rem, 1.25vw, 1.25rem)',
         fontWeight: 700,
         letterSpacing: '0.005em',
         cursor: 'pointer',
@@ -174,12 +165,12 @@ function BigDecisionButton({ kind, active, onClick, label, shortcut, icon }) {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 40,
-        height: 40,
+        width: 46,
+        height: 46,
         borderRadius: '50%',
         background: active ? 'rgba(255,255,255,0.18)' : (isYes ? 'var(--decision-yes-light)' : 'var(--decision-no-light)'),
       }}>
-        {active ? <Check size={22} /> : icon}
+        {active ? <Check size={24} /> : icon}
       </span>
       <span>{label}</span>
       <Kbd

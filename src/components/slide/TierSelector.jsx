@@ -1,9 +1,10 @@
 import React from 'react';
 import { getEnrichedById, resolvePriceCents } from '../../utils/pricingResolver.js';
-import { Money } from '../../utils/money.js';
 
 /**
- * Paliers exclusifs (ex. groupe manufacturier vs prolongé) — un seul palier actif
+ * Paliers exclusifs (ex. groupe manufacturier vs prolongé) — un seul palier actif.
+ * Les prix ne sont JAMAIS affichés au client : le vendeur sélectionne la durée
+ * qui convient, le prix associé est stocké dans les réponses mais reste caché ici.
  */
 export default function TierSelector({ product, dealerSettings, tierId, onChange }) {
   const e = getEnrichedById(product.id) || product;
@@ -13,13 +14,18 @@ export default function TierSelector({ product, dealerSettings, tierId, onChange
     <div
       style={{
         marginTop: 'auto',
-        padding: '0.75rem 0',
+        padding: '1rem 0 0.5rem',
         borderTop: '1px dashed var(--border-hair)',
       }}
     >
       <div
         className="overline"
-        style={{ color: 'var(--forest-600)', marginBottom: '0.5rem' }}
+        style={{
+          color: 'var(--forest-600)',
+          marginBottom: '0.75rem',
+          fontSize: 'clamp(0.8rem, 0.95vw, 0.95rem)',
+          letterSpacing: '0.1em',
+        }}
       >
         Palier de couverture
       </div>
@@ -27,35 +33,49 @@ export default function TierSelector({ product, dealerSettings, tierId, onChange
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.65rem',
-          fontSize: 'var(--fs-xs)',
+          gap: '0.85rem',
         }}
       >
         {e.tierGroups.map((g) => (
           <div key={g.id}>
-            <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>{g.label}</div>
+            <div
+              style={{
+                fontWeight: 600,
+                color: 'var(--text-secondary)',
+                marginBottom: 8,
+                fontSize: 'clamp(0.95rem, 1.05vw, 1.1rem)',
+              }}
+            >
+              {g.label}
+            </div>
             <div
               style={{
                 display: 'flex',
                 flexWrap: 'wrap',
-                gap: 6,
+                gap: 10,
               }}
             >
               {g.tiers.map((t) => {
+                // Le prix reste stocké mais non affiché au client
                 const c = resolvePriceCents(e, dealerSettings, t.id, g.id);
                 const checked = tierId === t.id;
                 return (
                   <label
                     key={t.id}
+                    data-price-cents={c}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 5,
-                      padding: '0.3rem 0.45rem',
-                      borderRadius: 'var(--r-sm)',
-                      border: `1px solid ${checked ? 'var(--forest-600)' : 'var(--border-hair)'}`,
+                      gap: 8,
+                      padding: '0.55rem 0.9rem',
+                      borderRadius: 'var(--r-md)',
+                      border: `1.5px solid ${checked ? 'var(--forest-600)' : 'var(--border-hair)'}`,
                       background: checked ? 'var(--brand-green-light)' : 'var(--bg-card)',
                       cursor: 'pointer',
+                      fontSize: 'clamp(0.95rem, 1.05vw, 1.1rem)',
+                      fontWeight: checked ? 700 : 500,
+                      color: checked ? 'var(--forest-600)' : 'var(--text-primary)',
+                      transition: 'var(--tx)',
                     }}
                   >
                     <input
@@ -63,16 +83,9 @@ export default function TierSelector({ product, dealerSettings, tierId, onChange
                       name={`tier-${e.id}`}
                       checked={checked}
                       onChange={() => onChange(t.id, g.id)}
+                      style={{ accentColor: 'var(--forest-600)' }}
                     />
                     <span>{t.label}</span>
-                    <span
-                      style={{
-                        fontVariantNumeric: 'tabular-nums',
-                        color: 'var(--text-tertiary)',
-                      }}
-                    >
-                      {new Money(c).format()}
-                    </span>
                   </label>
                 );
               })}

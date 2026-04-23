@@ -16,7 +16,6 @@ import {
   sumFinancedAddOnCentsForIds,
   displayColumnCost,
   deltaVersusBase,
-  productFinancedValueCents,
 } from '../utils/menuCalculations.js';
 import { updatePresentation, publishPublicSnapshot } from '../services/presentationService';
 import { useAuth } from '../context/AuthContext';
@@ -32,7 +31,7 @@ const COL_LABELS = {
   pas_important: 'Pas important',
 };
 
-function DraggableCard({ id, title, price, dim, disabled }) {
+function DraggableCard({ id, title, dim, disabled }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, disabled });
   return (
     <div
@@ -43,46 +42,57 @@ function DraggableCard({ id, title, price, dim, disabled }) {
       style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        padding: '0.85rem 1rem',
+        gap: 14,
+        padding: '1.15rem 1.35rem',
         background: 'var(--bg-card)',
         border: '1px solid var(--border-hair)',
         borderRadius: 'var(--r-md)',
-        fontSize: 'var(--fs-md)',
-        fontWeight: 500,
-        marginBottom: 10,
+        fontSize: 'clamp(1.05rem, 1.2vw, 1.2rem)',
+        fontWeight: 600,
+        marginBottom: 12,
         cursor: disabled ? 'default' : 'grab',
         opacity: isDragging ? 0.35 : 1,
         transform: isDragging ? 'scale(1.01)' : 'none',
         boxShadow: isDragging ? '0 18px 40px rgba(0,0,0,0.18)' : 'var(--shadow-xs)',
         transition: 'box-shadow 0.2s var(--ease-out), border-color 0.2s var(--ease-out)',
         touchAction: 'none',
+        minHeight: 64,
       }}
     >
-      <span style={{
-        flex: 1,
-        minWidth: 0,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-        color: dim ? 'var(--text-secondary)' : 'var(--text-primary)',
-      }}>
-        {title}
-      </span>
-      {price != null && (
-        <span style={{
+      <span
+        aria-hidden
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 34,
+          height: 34,
+          borderRadius: '50%',
+          background: dim ? 'var(--bg-subtle)' : 'var(--or-100)',
+          color: dim ? 'var(--text-tertiary)' : 'var(--or-700)',
+          flexShrink: 0,
           fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
-          fontWeight: 600,
-          fontSize: 'var(--fs-sm)',
-          color: dim ? 'var(--text-tertiary)' : 'var(--or-900)',
-          fontVariantNumeric: 'tabular-nums',
+          fontWeight: 700,
+          fontSize: '1rem',
+          border: `1px solid ${dim ? 'var(--border-hair)' : 'var(--or-500)'}`,
+        }}
+      >
+        {dim ? '·' : '✓'}
+      </span>
+      <span
+        style={{
+          flex: 1,
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
-        }}>
-          {new Money(price).format()}
-        </span>
-      )}
+          color: dim ? 'var(--text-secondary)' : 'var(--text-primary)',
+          letterSpacing: '-0.005em',
+        }}
+      >
+        {title}
+      </span>
     </div>
   );
 }
@@ -94,26 +104,27 @@ function DropColumn({ colId, label, subtitle, accent, icon, count, children }) {
     <div
       ref={setNodeRef}
       style={{
-        minHeight: 320,
+        minHeight: 460,
         flex: 1,
         minWidth: 0,
-        padding: '1rem 1rem 1.25rem',
-        borderRadius: 'var(--r-lg)',
+        padding: '1.75rem 1.5rem 2rem',
+        borderRadius: 'var(--r-xl)',
         border: isOver
-          ? `2px solid ${accent}`
+          ? `2.5px solid ${accent}`
           : isImportant
-            ? `1px solid ${accent}`
-            : '1px solid var(--border-hair)',
+            ? `1.5px solid ${accent}`
+            : '1.5px solid var(--border-hair)',
         background: isImportant
-          ? 'linear-gradient(180deg, var(--or-100) 0%, var(--bg-card) 50%)'
+          ? 'linear-gradient(180deg, var(--or-100) 0%, var(--bg-card) 40%)'
           : 'var(--bg-subtle)',
+        boxShadow: isImportant ? '0 12px 32px rgba(184,147,90,0.08)' : 'var(--shadow-xs)',
         display: 'flex',
         flexDirection: 'column',
         transition: 'border-color 0.2s var(--ease-out), background 0.2s var(--ease-out)',
       }}
     >
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4,
+        display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8,
       }}>
         {icon}
         <h3 style={{
@@ -121,21 +132,23 @@ function DropColumn({ colId, label, subtitle, accent, icon, count, children }) {
           fontFamily: 'var(--font-display)',
           fontStyle: 'italic',
           fontWeight: 500,
-          fontSize: '1.35rem',
+          fontSize: 'clamp(1.75rem, 2.3vw, 2.2rem)',
           color: isImportant ? 'var(--or-900)' : 'var(--text-primary)',
-          letterSpacing: '-0.01em',
+          letterSpacing: '-0.015em',
         }}>
           {label}
         </h3>
         <span style={{
           marginLeft: 'auto',
-          fontSize: 'var(--fs-xs)',
-          fontWeight: 600,
-          color: 'var(--text-tertiary)',
+          fontSize: 'var(--fs-sm)',
+          fontWeight: 700,
+          color: isImportant ? 'var(--or-700)' : 'var(--text-tertiary)',
           background: 'var(--bg-card)',
-          border: '1px solid var(--border-hair)',
+          border: `1px solid ${isImportant ? 'var(--or-500)' : 'var(--border-hair)'}`,
           borderRadius: 999,
-          padding: '2px 8px',
+          padding: '4px 12px',
+          minWidth: 32,
+          textAlign: 'center',
         }}>
           {count}
         </span>
@@ -143,9 +156,10 @@ function DropColumn({ colId, label, subtitle, accent, icon, count, children }) {
       {subtitle && (
         <p style={{
           margin: 0,
-          fontSize: 'var(--fs-xs)',
+          fontSize: 'var(--fs-sm)',
           color: 'var(--text-tertiary)',
-          marginBottom: 14,
+          marginBottom: 18,
+          lineHeight: 1.5,
         }}>
           {subtitle}
         </p>
@@ -157,9 +171,9 @@ function DropColumn({ colId, label, subtitle, accent, icon, count, children }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: 160,
+            minHeight: 200,
             color: 'var(--text-tertiary)',
-            fontSize: 'var(--fs-xs)',
+            fontSize: 'var(--fs-sm)',
             fontStyle: 'italic',
             textAlign: 'center',
             padding: '0 1rem',
@@ -232,15 +246,6 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
     () => allProducts.filter((p) => getInterest(responses[p.id]) != null),
     [allProducts, responses],
   );
-
-  // Valeur unitaire (financée, taxes incluses) par produit — pour affichage carte + totaux
-  const unitCentsById = useMemo(() => {
-    const m = {};
-    products.forEach((p) => {
-      m[p.id] = productFinancedValueCents(p, responses?.[p.id], dealerSettingsSnapshot);
-    });
-    return m;
-  }, [products, responses, dealerSettingsSnapshot]);
 
   // S'assure que chaque produit présent ait une placement (par défaut : important si yes/maybe, sinon pas_important)
   const placementsComplete = useMemo(() => {
@@ -415,9 +420,9 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
   return (
     <div
       className="animate-in"
-      style={{ minHeight: '100vh', background: 'var(--bg-page)', padding: 'clamp(1rem, 2vw, 1.75rem)' }}
+      style={{ minHeight: '100vh', background: 'var(--bg-page)', padding: 'clamp(1.25rem, 2.5vw, 2.25rem)' }}
     >
-      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1600, margin: '0 auto' }}>
         {/* ── Header ── */}
         <div style={{
           display: 'flex',
@@ -428,24 +433,26 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
           marginBottom: 20,
         }}>
           <div style={{ flex: 1, minWidth: 240 }}>
-            <span className="overline" style={{ color: 'var(--text-tertiary)' }}>
+            <span className="overline" style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem', letterSpacing: '0.12em' }}>
               Étape finale · Menu client
             </span>
             <h1 style={{
               fontFamily: 'var(--font-display)',
               fontStyle:  'italic',
-              fontSize:   'clamp(1.75rem, 2.4vw, 2.25rem)',
+              fontSize:   'clamp(2.25rem, 3.2vw, 3.25rem)',
               fontWeight: 500,
-              margin:     '0.25rem 0 0',
-              letterSpacing: '-0.02em',
+              margin:     '0.35rem 0 0',
+              letterSpacing: '-0.022em',
+              lineHeight: 1.1,
             }}>
               Bâtissez la transaction avec le client
             </h1>
             <p style={{
               color: 'var(--text-secondary)',
-              fontSize: 'var(--fs-sm)',
-              margin: '0.4rem 0 0',
-              maxWidth: 620,
+              fontSize: 'clamp(1rem, 1.15vw, 1.15rem)',
+              margin: '0.75rem 0 0',
+              maxWidth: 720,
+              lineHeight: 1.55,
             }}>
               Déplacez chaque produit entre <strong>Important</strong> et <strong>Pas important</strong>.
               Le paiement se met à jour en direct.
@@ -573,8 +580,8 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              gap: 20,
-              marginBottom: 24,
+              gap: 28,
+              marginBottom: 28,
             }}
           >
             <DropColumn
@@ -594,7 +601,6 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
                   <DraggableCard
                     id={p.id}
                     title={p.title}
-                    price={unitCentsById[p.id]}
                     disabled={sealed}
                   />
                 </div>
@@ -618,7 +624,6 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
                   <DraggableCard
                     id={p.id}
                     title={p.title}
-                    price={unitCentsById[p.id]}
                     dim
                     disabled={sealed}
                   />

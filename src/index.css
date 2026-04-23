@@ -1087,18 +1087,50 @@ input, select, textarea {
 /* ──────────────────────────────────────────────────
    PRINT
    ────────────────────────────────────────────────── */
+.print-only {
+  /* Par défaut caché à l'écran, révélé à l'impression. */
+  display: none !important;
+}
+
 @media print {
-  body * { visibility: hidden; }
-  .print-summary, .print-summary * { visibility: visible; }
-  .print-summary {
-    position: fixed; top: 0; left: 0;
-    width: 100%; padding: 1cm 1.5cm;
-    font-family: var(--font-body);
-    font-size: 11pt; color: #1A1A1A;
-    background: white;
+  /* Force un fond blanc, pas de bruits de fond sombres. */
+  html, body {
+    background: #fff !important;
+    color: #1A1A1A !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
+
+  /* On masque TOUT, puis on ré-affiche uniquement le bloc dédié à l'impression. */
+  body * { visibility: hidden !important; }
+  .print-summary,
+  .print-summary * { visibility: visible !important; }
+
+  .print-only,
+  .print-summary {
+    display: block !important;
+  }
+
+  .print-summary {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    padding: 1.5cm 1.8cm;
+    font-family: var(--font-body, Inter, sans-serif);
+    font-size: 11pt;
+    color: #1A1A1A;
+    background: #fff;
+    box-shadow: none;
+  }
+
   .no-print { display: none !important; }
-  @page { size: A4 portrait; margin: 0; }
+
+  @page {
+    size: A4 portrait;
+    margin: 0.8cm;
+  }
 }
 
 /* ──────────────────────────────────────────────────
