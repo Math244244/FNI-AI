@@ -580,29 +580,8 @@ export default function SlideDeck() {
             />
           </div>
 
-          {/* Note directeur — lisible, contraste fort */}
-          {product.presenter_note && (
-            <div
-              className="presenter-note"
-              style={{
-                marginTop: '1.5rem',
-                padding: '1rem 1.15rem',
-                background: 'rgba(255, 248, 230, 0.85)',
-                border: '1px solid var(--or-500)',
-                borderLeft: '3px solid var(--or-700)',
-                borderRadius: 'var(--r-sm)',
-                fontSize: 'clamp(0.95rem, 1.05vw, 1.05rem)',
-                color: '#4a2f00',
-                lineHeight: 1.55,
-                zIndex: 1,
-              }}
-            >
-              <strong style={{ fontWeight: 700, color: 'var(--or-900)' }}>
-                Note directeur —
-              </strong>{' '}
-              <span style={{ fontStyle: 'italic' }}>{product.presenter_note}</span>
-            </div>
-          )}
+          {/* Note directeur — RESERVÉE AU VENDEUR, JAMAIS AFFICHÉE À L'ÉCRAN
+              (le client voit cette page : aucune info interne ne doit apparaître). */}
         </section>
 
         {/* Colonne droite : visuel véhicule GRAND */}
