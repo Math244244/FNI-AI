@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { getDealers } from '../../services/adminService';
 import { getAllPresentations, getDealerPresentations, computeAnalytics } from '../../services/presentationService';
 import { PRODUCTS } from '../../data/products';
@@ -44,42 +43,50 @@ function MonthChart({ byMonth }) {
 }
 
 export default function AdminReports() {
-  const { currentUser } = useAuth();
-
   const [dealers,    setDealers]    = useState([]);
   const [filter,     setFilter]     = useState({ dealerId: '', from: '', to: '' });
   const [presentations, setPres]    = useState([]);
   const [analytics,  setAnalytics]  = useState(null);
   const [loading,    setLoading]    = useState(false);
+  const [error,      setError]      = useState('');
   const [tab,        setTab]        = useState('overview');
 
   useEffect(() => {
-    getDealers().then(setDealers).catch(console.error);
+    getDealers().then(setDealers).catch((e) => console.error('[AdminReports] dealers:', e));
   }, []);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      let pres = filter.dealerId
-        ? await getDealerPresentations(filter.dealerId)
-        : await getAllPresentations();
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        let pres = filter.dealerId
+          ? await getDealerPresentations(filter.dealerId)
+          : await getAllPresentations();
 
-      // Date filter
-      if (filter.from || filter.to) {
-        pres = pres.filter(p => {
-          if (!p.createdAt?.toDate) return true;
-          const d = p.createdAt.toDate();
-          if (filter.from && d < new Date(filter.from)) return false;
-          if (filter.to   && d > new Date(filter.to + 'T23:59:59')) return false;
-          return true;
-        });
+        if (filter.from || filter.to) {
+          pres = pres.filter((p) => {
+            if (!p.createdAt?.toDate) return true;
+            const d = p.createdAt.toDate();
+            if (filter.from && d < new Date(filter.from)) return false;
+            if (filter.to   && d > new Date(filter.to + 'T23:59:59')) return false;
+            return true;
+          });
+        }
+        if (cancelled) return;
+        setPres(pres);
+        setAnalytics(computeAnalytics(pres));
+      } catch (e) {
+        console.error('[AdminReports] load:', e);
+        if (!cancelled) setError('Impossible de charger les rapports. Réessayez.');
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setPres(pres);
-      setAnalytics(computeAnalytics(pres));
-    } finally { setLoading(false); }
-  };
-
-  useEffect(() => { load(); }, [filter]);
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [filter]);
 
   const exportCSV = () => {
     const rows = [
@@ -128,10 +135,18 @@ export default function AdminReports() {
             {analytics?.total || 0} présentation{analytics?.total !== 1 ? 's' : ''} analysée{analytics?.total !== 1 ? 's' : ''}
           </p>
         </div>
-        <button className="btn-outline" onClick={exportCSV} disabled={!presentations.length}>
+        <button className="btn-outline" onClick={exportCSV} disabled={!presentations.length || loading}>
           <Download size={14} /> Exporter CSV
         </button>
       </div>
+
+      {error && (
+        <div role="alert" style={{
+          marginBottom: '1rem', padding: '0.75rem 1rem',
+          background: 'var(--danger-light)', border: '1px solid var(--danger-border)',
+          color: 'var(--crimson-500)', borderRadius: 'var(--r-md)', fontSize: '0.85rem',
+        }}>{error}</div>
+      )}
 
       {/* Filters */}
       <div className="card" style={{ marginBottom: '1.75rem', padding: '1rem 1.25rem' }}>
@@ -214,7 +229,7 @@ export default function AdminReports() {
             <div className="card">
               <h3 style={{ fontSize: '0.9375rem', marginBottom: '1rem' }}>Répartition — Condition</h3>
               {['neuf','usage'].map(c => {
-                const count = presentations.filter(p => p.vehicle?.condition === c || (c === 'neuf' && !p.vehicle?.condition)).length;
+                const count = presentations.filter(p => p.vehicle?.condition === c).length;
                 const pct   = presentations.length ? Math.round(count/presentations.length*100) : 0;
                 return (
                   <div key={c} style={{ marginBottom: '0.875rem' }}>

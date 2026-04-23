@@ -63,13 +63,19 @@ export function AuthProvider({ children }) {
         const profile = await loadProfile(user.uid);
         setUserProfile(profile);
       } else {
-        setCurrentUser(prev => prev?.uid === 'demo' ? prev : null);
-        if (!currentUser || currentUser.uid !== 'demo') setUserProfile(null);
+        setCurrentUser((prev) => (prev?.uid === 'demo' ? prev : null));
+        setUserProfile((prev) => (prev && currentUserIsDemoRef.current ? prev : null));
       }
       setLoading(false);
     });
     return unsub;
   }, []);
+
+  // Ref miroir pour éviter une closure périmée sur `currentUser`
+  const currentUserIsDemoRef = React.useRef(false);
+  useEffect(() => {
+    currentUserIsDemoRef.current = currentUser?.uid === 'demo';
+  }, [currentUser]);
 
   const isDemo        = currentUser?.uid === 'demo';
   const isSuperAdmin  = userProfile?.role === 'superAdmin';

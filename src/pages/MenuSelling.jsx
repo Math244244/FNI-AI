@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   DndContext, PointerSensor, useSensor, useSensors, pointerWithin,
   DragOverlay,
@@ -224,6 +224,23 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
   const [shareUrl, setShareUrl] = useState(/** @type {string|null} */ (null));
   const [sealed, setSealed]     = useState(false);
   const [activeDragId, setActiveDragId] = useState(/** @type {string|null} */ (null));
+  const [publishError, setPublishError] = useState(/** @type {string|null} */ (null));
+
+  // Resync si le contexte externe change après le montage (ex. reprise)
+  const sessionKeyRef = useRef('');
+  const sessionKey = useMemo(
+    () => `${vehicle?.make || ''}|${vehicle?.model || ''}|${clientName || ''}`,
+    [vehicle, clientName],
+  );
+  useEffect(() => {
+    if (sessionKeyRef.current && sessionKeyRef.current !== sessionKey) {
+      setPlacements(initialPlacements);
+      setSealed(false);
+      setShareUrl(null);
+      setPublishError(null);
+    }
+    sessionKeyRef.current = sessionKey;
+  }, [sessionKey, initialPlacements]);
 
   // Catalogue fusionné (incluant custom dealer) si disponible, sinon ENRICHED_PRODUCTS
   // Les produits retirés depuis la page de démarrage sont exclus.
@@ -353,9 +370,23 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
     if (!currentUser) return;
     setPub(true);
     setShareUrl(null);
+    setPublishError(null);
     try {
       const token = crypto.randomUUID();
       const origin = window.location?.origin || '';
+      // Snapshot minimal du catalogue effectivement utilisé (dealer merged)
+      const productsSnapshot = products.map((p) => ({
+        id: p.id,
+        title: p.title,
+        icon: p.icon || null,
+        chapter: p.chapter || null,
+        isCustom: !!p.isCustom,
+        pricingMode: p.pricingMode || null,
+        defaultPriceCents: p.defaultPriceCents || null,
+        tiers: Array.isArray(p.tiers) ? p.tiers : null,
+        taxable: p.taxable !== false,
+        financed: p.financed !== false,
+      }));
       await publishPublicSnapshot(token, {
         vehicle:       vehicle || {},
         clientName:    clientName || '',
@@ -364,12 +395,14 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
         timePerProduct: timePerProduct || {},
         placements:    { ...placementsComplete },
         dealerPricing: dealerSettingsSnapshot?.pricing || null,
+        productsSnapshot,
         createdBy:     currentUser.uid,
         presId:        presId || null,
       });
       setShareUrl(`${origin}/t/${token}`);
     } catch (e) {
-      console.error(e);
+      console.error('[MenuSelling] publishPublicSnapshot:', e);
+      setPublishError('Impossible de générer le lien. Réessayez dans un instant.');
     } finally { setPub(false); }
   };
 
@@ -839,6 +872,15 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
                 Copier
               </Button>
             </div>
+          )}
+          {publishError && (
+            <span role="alert" style={{
+              fontSize: 'var(--fs-xs)',
+              color: 'var(--crimson-500)',
+              fontWeight: 500,
+            }}>
+              {publishError}
+            </span>
           )}
           {sealed && (
             <span style={{

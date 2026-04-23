@@ -13,12 +13,46 @@ import { Check } from 'lucide-react';
 export default function ClientView() {
   const { sessionId } = useParams();
   const [state, setState] = useState(null);
+  const [syncError, setSyncError] = useState(false);
 
   useEffect(() => {
     if (!sessionId) return;
-    const unsub = subscribeSession(sessionId, setState);
-    return unsub;
+    let unsub;
+    try {
+      unsub = subscribeSession(sessionId, (val) => {
+        setState(val);
+        setSyncError(false);
+      });
+    } catch (e) {
+      console.error('[ClientView] subscribe error:', e);
+      setSyncError(true);
+    }
+    return () => { if (unsub) unsub(); };
   }, [sessionId]);
+
+  if (syncError) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(160deg, #0E0E11, #1A1A1F)',
+        color: 'var(--ivoire-100)',
+        padding: '2rem',
+        textAlign: 'center',
+      }}>
+        <div>
+          <div style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+            Synchronisation indisponible
+          </div>
+          <p style={{ color: 'rgba(255,255,255,0.7)' }}>
+            Veuillez patienter pendant que votre conseiller rétablit la connexion.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!state) {
     return (
@@ -50,8 +84,21 @@ export default function ClientView() {
     );
   }
 
-  const { vehicle, clientName, productIndex = 0, responses = {} } = state;
-  const product = ENRICHED_PRODUCTS[productIndex] || ENRICHED_PRODUCTS[0];
+  const {
+    vehicle,
+    clientName,
+    productIndex = 0,
+    productId = null,
+    productSnapshot = null,
+    responses = {},
+  } = state;
+
+  // Priorité : snapshot envoyé par le vendeur (catalogue dealer merged)
+  // puis productId dans le catalogue enrichi, puis fallback sur l'index.
+  const product = productSnapshot
+    || (productId ? ENRICHED_PRODUCTS.find((p) => p.id === productId) : null)
+    || ENRICHED_PRODUCTS[productIndex]
+    || ENRICHED_PRODUCTS[0];
   const interest = getInterest(responses[product?.id]);
   if (!product) return null;
 

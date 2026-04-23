@@ -174,18 +174,22 @@ export default function Combobox({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
+        if (!filtered.length) return;
         setAct((i) => Math.min(filtered.length - 1, i + 1));
         break;
       case 'ArrowUp':
         e.preventDefault();
+        if (!filtered.length) return;
         setAct((i) => Math.max(0, i - 1));
         break;
       case 'Home':
         e.preventDefault();
+        if (!filtered.length) return;
         setAct(0);
         break;
       case 'End':
         e.preventDefault();
+        if (!filtered.length) return;
         setAct(Math.max(0, filtered.length - 1));
         break;
       case 'Enter': {
@@ -280,11 +284,11 @@ export default function Combobox({
         </span>
 
         {clearable && selectedLabel && !disabled && (
-          <span
-            role="button"
+          <button
+            type="button"
             aria-label="Effacer"
             tabIndex={-1}
-            onClick={onClear}
+            onClick={(e) => { e.stopPropagation(); onClear?.(e); }}
             onMouseDown={(e) => e.stopPropagation()}
             style={{
               display: 'inline-flex',
@@ -295,10 +299,13 @@ export default function Combobox({
               borderRadius: '50%',
               color: 'var(--text-tertiary)',
               cursor: 'pointer',
+              border: 'none',
+              background: 'transparent',
+              padding: 0,
             }}
           >
             <ClearIcon size={14} />
-          </span>
+          </button>
         )}
 
         <ChevronDown

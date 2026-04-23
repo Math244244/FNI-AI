@@ -16,17 +16,20 @@ import {
   Image as ImageIcon, ExternalLink,
 } from 'lucide-react';
 
-/* ─── Custom Toggle ─── */
-function Toggle({ on, onChange }) {
+/* ─── Custom Toggle (accessible) ─── */
+function Toggle({ on, onChange, label }) {
   return (
-    <div
+    <button
+      type="button"
       className={`toggle ${on ? 'on' : 'off'}`}
       onClick={() => onChange(!on)}
-      role="checkbox"
+      role="switch"
       aria-checked={on}
+      aria-label={label || (on ? 'Activé' : 'Désactivé')}
+      style={{ border: 'none', padding: 0, background: 'transparent', cursor: 'pointer' }}
     >
       <div className="toggle-thumb" />
-    </div>
+    </button>
   );
 }
 

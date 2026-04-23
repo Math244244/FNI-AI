@@ -77,11 +77,13 @@ export default function PresentationStart() {
     };
   }, [menuOpen]);
 
-  const excludedSet = useMemo(
-    () => new Set(excludedProductIds || []),
-    [excludedProductIds],
-  );
-  const activeCount = products.length - excludedSet.size;
+  const excludedSet = useMemo(() => {
+    const known = new Set(products.map((p) => p.id));
+    // N'exclure que les IDs qui existent toujours dans le catalogue, sinon
+    // le compteur peut devenir négatif et le filtre muet.
+    return new Set((excludedProductIds || []).filter((id) => known.has(id)));
+  }, [excludedProductIds, products]);
+  const activeCount = Math.max(0, products.length - excludedSet.size);
 
   const start = () => navigate('/presentation');
 
@@ -97,12 +99,16 @@ export default function PresentationStart() {
     return groups;
   }, [products]);
 
-  const chapterOrder = useMemo(
-    () => Object.keys(CHAPTERS).sort(
+  const chapterOrder = useMemo(() => {
+    const known = Object.keys(CHAPTERS);
+    const orderedKnown = known.sort(
       (a, b) => (CHAPTERS[a].order || 99) - (CHAPTERS[b].order || 99),
-    ),
-    [],
-  );
+    );
+    // Ajoute d'éventuels chapitres orphelins (custom dealer ou catalogue non déclaré)
+    const presentKeys = Object.keys(productsByChapter);
+    const orphans = presentKeys.filter((k) => !orderedKnown.includes(k));
+    return [...orderedKnown, ...orphans];
+  }, [productsByChapter]);
 
   const transLabel = transactionType === 'location'
     ? 'Location'

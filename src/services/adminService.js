@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import {
   collection, addDoc, doc, getDoc, getDocs, setDoc,
-  updateDoc, query, where, orderBy, serverTimestamp, deleteDoc,
+  updateDoc, query, where, orderBy, limit, serverTimestamp,
 } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
@@ -119,12 +119,20 @@ export async function toggleUserActive(uid, active) {
 
 /* ═══════════════════════════════════════
    GLOBAL STATS (for admin dashboard)
+   - Lit un échantillon borné des présentations pour garder les perfs
+     et éviter les timeouts à grande échelle. Voir ADMIN_STATS_LIMIT.
    ═══════════════════════════════════════ */
+export const ADMIN_STATS_LIMIT = 500;
+
 export async function getGlobalStats() {
   const [dealersSnap, usersSnap, presSnap] = await Promise.all([
     getDocs(collection(db, 'dealers')),
     getDocs(collection(db, 'users')),
-    getDocs(collection(db, 'presentations')),
+    getDocs(query(
+      collection(db, 'presentations'),
+      orderBy('createdAt', 'desc'),
+      limit(ADMIN_STATS_LIMIT),
+    )),
   ]);
 
   const presentations = presSnap.docs.map(d => d.data());
@@ -132,10 +140,16 @@ export async function getGlobalStats() {
     ? Math.round(presentations.reduce((s, p) => s + (p.protectionRate || 0), 0) / presentations.length)
     : 0;
 
+  const activeDealers = dealersSnap.docs.filter((d) => d.data()?.active !== false).length;
+  const activeUsers = usersSnap.docs.filter((u) => u.data()?.active !== false).length;
+
   return {
     totalDealers:       dealersSnap.size,
+    activeDealers,
     totalUsers:         usersSnap.size,
-    totalPresentations: presSnap.size,
+    activeUsers,
+    totalPresentations: presentations.length,
+    presentationsCapped: presentations.length >= ADMIN_STATS_LIMIT,
     avgProtectionRate:  avgRate,
   };
 }

@@ -84,29 +84,38 @@ export function buildCatalogOverridesMap(productRows, catalog = PRODUCTS) {
  * @returns {Array<object>} liste de produits avec active + champs mergés
  */
 export function buildMergedProductListFromSettings(settings, catalog = PRODUCTS) {
-  if (!settings?.productOrder?.length) {
+  // Rien du tout en base : liste neutre basée sur le catalogue
+  if (!settings || (!Array.isArray(settings.productOrder)
+      && !settings.overrides
+      && !settings.customProducts
+      && !settings.disabled)) {
     return catalog.map((p) => ({ ...p, active: true }));
   }
 
-  const customList = settings.customProducts || [];
+  const customList = Array.isArray(settings.customProducts) ? settings.customProducts : [];
   const basePool = [...catalog, ...customList];
   const byId = new Map(basePool.map((p) => [p.id, p]));
   const ordered = [];
+  const order = Array.isArray(settings.productOrder) ? settings.productOrder : [];
 
-  for (const id of settings.productOrder) {
+  // 1) Ordre explicite du dealer
+  for (const id of order) {
     const p = byId.get(id);
     if (p) ordered.push(mergeOneRow(p, settings, catalog));
   }
+  // 2) Produits catalogue non ordonnés — ajoutés à la fin
   for (const p of catalog) {
     if (!ordered.find((o) => o.id === p.id)) ordered.push(mergeOneRow(p, settings, catalog));
   }
+  // 3) Produits custom non ordonnés
   for (const c of customList) {
     if (!ordered.find((o) => o.id === c.id)) ordered.push(mergeOneRow(c, settings, catalog));
   }
 
+  const disabledSet = new Set(Array.isArray(settings.disabled) ? settings.disabled : []);
   return ordered.map((row) => ({
     ...row,
-    active: !settings.disabled?.includes(row.id),
+    active: !disabledSet.has(row.id),
   }));
 }
 

@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Car } from 'lucide-react';
 
 /**
- * VehicleImage — cascade fallback
- * 1) cdn.imagin.studio (angle configurable)
- * 2) silhouette SVG selon catégorie
- * 3) monogramme Fraunces initiales marque
+ * VehicleImage — cascade fallback :
+ *   1) CDN imagin.studio (tentée pour toutes les catégories, silencieusement)
+ *   2) Silhouette Lucide (Car) dans la teinte graphite si échec CDN ou sans marque/modèle.
  */
 export default function VehicleImage({
   year,
@@ -18,22 +17,22 @@ export default function VehicleImage({
   style,
   fit = 'contain',
 }) {
-  const [stage, setStage] = useState(0);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => { setStage(0); }, [year, make, model, category]);
+  useEffect(() => { setFailed(false); }, [year, make, model, category]);
 
   const baseUrl = make && model
     ? `https://cdn.imagin.studio/getimage?customer=img&make=${encodeURIComponent(make)}&modelFamily=${encodeURIComponent(model)}&modelYear=${year || new Date().getFullYear()}&angle=${angle}&width=${width}`
     : null;
 
-  if (stage === 0 && baseUrl && category === 'automobile') {
+  if (baseUrl && !failed) {
     return (
       <img
         src={baseUrl}
-        alt={alt || `${year || ''} ${make} ${model}`.trim()}
+        alt={alt || `${year || ''} ${make} ${model}`.trim() || `Véhicule ${category}`}
         loading="lazy"
         decoding="async"
-        onError={() => setStage(1)}
+        onError={() => setFailed(true)}
         style={{
           width: '100%',
           height: '100%',
@@ -46,36 +45,19 @@ export default function VehicleImage({
     );
   }
 
-  if (stage <= 1) {
-    return (
-      <div
-        role="img"
-        aria-label={`Silhouette ${category}`}
-        style={{
-          width: '100%', height: '100%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'transparent',
-          color: 'var(--graphite-300)',
-          ...style,
-        }}
-      >
-        <Car size="55%" strokeWidth={1.2} />
-      </div>
-    );
-  }
-
-  const initials = (make || '?').slice(0, 2).toUpperCase();
   return (
-    <div style={{
-      width: '100%', height: '100%',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'var(--font-display)', fontStyle: 'italic', fontWeight: 500,
-      fontSize: 'clamp(3rem, 12vw, 6rem)',
-      color: 'var(--or-700)',
-      letterSpacing: '-0.04em',
-      ...style,
-    }}>
-      {initials}
+    <div
+      role="img"
+      aria-label={alt || `Silhouette ${category}`}
+      style={{
+        width: '100%', height: '100%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'transparent',
+        color: 'var(--graphite-300)',
+        ...style,
+      }}
+    >
+      <Car size="55%" strokeWidth={1.2} />
     </div>
   );
 }

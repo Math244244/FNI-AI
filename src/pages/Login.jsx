@@ -47,7 +47,18 @@ export default function Login() {
   const handleGoogle = async () => {
     setLoading(true); setError('');
     try { await loginWithGoogle(); go(); }
-    catch { setError('Connexion Google annulée.'); }
+    catch (err) {
+      const msg = {
+        'auth/popup-closed-by-user':      'Connexion Google annulée.',
+        'auth/cancelled-popup-request':   'Connexion Google annulée.',
+        'auth/popup-blocked':             'La fenêtre Google a été bloquée par le navigateur.',
+        'auth/account-exists-with-different-credential':
+                                          'Un compte existe déjà avec ce courriel via un autre mode de connexion.',
+        'auth/network-request-failed':    'Erreur réseau. Vérifiez votre connexion.',
+        'auth/user-disabled':             'Ce compte a été désactivé. Contactez votre administrateur.',
+      }[err?.code] || 'Connexion Google impossible. Réessayez.';
+      setError(msg);
+    }
     finally { setLoading(false); }
   };
 
@@ -180,7 +191,7 @@ export default function Login() {
           </header>
 
           {error && (
-            <div style={{
+            <div role="alert" aria-live="assertive" style={{
               padding: '0.75rem 0.9rem',
               borderRadius: 'var(--r-md)',
               background: 'var(--danger-light)',

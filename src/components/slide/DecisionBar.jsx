@@ -14,6 +14,7 @@ export default function DecisionBar({
   onNo,
   onPrev,
   gateFraction = 1,
+  disabled = false,
 }) {
   return (
     <div
@@ -55,6 +56,7 @@ export default function DecisionBar({
 
       {/* Gauche : Prev (seul élément restant à gauche) */}
       <button
+        type="button"
         onClick={onPrev}
         disabled={!onPrev}
         style={{
@@ -95,6 +97,7 @@ export default function DecisionBar({
           label="Pas important"
           shortcut="R"
           icon={<ThumbsDown size={22} />}
+          disabled={disabled}
         />
         <BigDecisionButton
           kind="yes"
@@ -103,6 +106,7 @@ export default function DecisionBar({
           label="Important"
           shortcut="V"
           icon={<ThumbsUp size={22} />}
+          disabled={disabled}
         />
       </div>
 
@@ -127,7 +131,7 @@ export default function DecisionBar({
   );
 }
 
-function BigDecisionButton({ kind, active, onClick, label, shortcut, icon }) {
+function BigDecisionButton({ kind, active, onClick, label, shortcut, icon, disabled }) {
   const isYes = kind === 'yes';
   const bgActive = isYes ? 'var(--forest-600)' : 'var(--crimson-600)';
   const bgIdle   = isYes ? 'transparent'       : 'transparent';
@@ -138,7 +142,9 @@ function BigDecisionButton({ kind, active, onClick, label, shortcut, icon }) {
 
   return (
     <button
+      type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
       aria-label={`${label} (${shortcut})`}
       style={{
@@ -155,10 +161,11 @@ function BigDecisionButton({ kind, active, onClick, label, shortcut, icon }) {
         fontSize: 'clamp(1.05rem, 1.25vw, 1.25rem)',
         fontWeight: 700,
         letterSpacing: '0.005em',
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
         boxShadow: active ? shadowActive : 'none',
         transition: 'var(--tx)',
         transform: active ? 'translateY(-1px)' : 'none',
+        opacity: disabled ? 0.55 : 1,
       }}
     >
       <span aria-hidden style={{

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { useAuth } from './AuthContext';
 
 const PresentationContext = createContext();
 export function usePresentation() { return useContext(PresentationContext); }
@@ -6,6 +7,7 @@ export function usePresentation() { return useContext(PresentationContext); }
 const emptyResponses = () => ({});
 
 export function PresentationProvider({ children }) {
+  const { currentUser } = useAuth();
   const [vehicle, setVehicleState]     = useState(null);
   const [clientName, setClientName]  = useState('');
   const [condition, setCondition]     = useState('neuf');
@@ -51,6 +53,16 @@ export function PresentationProvider({ children }) {
     setDealerSettingsSnapshot(null);
     setExcludedProductIds([]);
   }, []);
+
+  // Réinitialisation automatique si l'utilisateur change (logout / changement de compte)
+  const lastUidRef = useRef(null);
+  useEffect(() => {
+    const uid = currentUser?.uid || null;
+    if (lastUidRef.current !== null && lastUidRef.current !== uid) {
+      clearSession();
+    }
+    lastUidRef.current = uid;
+  }, [currentUser, clearSession]);
 
   const updateResponse = useCallback((productId, patch) => {
     setResponses((prev) => {

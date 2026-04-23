@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import { getGlobalStats, getDealers } from '../../services/adminService';
 import { getAllPresentations, computeAnalytics } from '../../services/presentationService';
-import { Building2, Users, FileText, TrendingUp, ArrowRight, Shield, BarChart2 } from 'lucide-react';
+import { PRODUCTS } from '../../data/products';
+import { Building2, Users, FileText, TrendingUp, ArrowRight, BarChart2 } from 'lucide-react';
+
+const PRODUCT_LABELS = Object.fromEntries(
+  PRODUCTS.map((p) => [p.id, { title: p.title, icon: p.icon || '📄' }]),
+);
 
 export default function AdminDashboard() {
-  const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats]     = useState(null);
   const [dealers, setDealers] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
       try {
         const [s, d, pres] = await Promise.all([
@@ -21,18 +26,30 @@ export default function AdminDashboard() {
           getDealers(),
           getAllPresentations(),
         ]);
+        if (cancelled) return;
         setStats(s);
-        setDealers(d.filter(d => d.active).slice(0, 5));
+        setDealers(d.filter((x) => x.active).slice(0, 5));
         setAnalytics(computeAnalytics(pres));
-      } catch (e) { console.error(e); }
-      finally { setLoading(false); }
+      } catch (e) {
+        console.error('[AdminDashboard] load:', e);
+        if (!cancelled) setError('Chargement impossible. Réessayez.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
     load();
+    return () => { cancelled = true; };
   }, []);
 
   const topProducts = analytics
     ? Object.entries(analytics.productStats)
-        .map(([id, s]) => ({ id, rate: s.total ? Math.round(s.yes / s.total * 100) : 0, ...s }))
+        .map(([id, s]) => ({
+          id,
+          label: PRODUCT_LABELS[id]?.title || id,
+          icon: PRODUCT_LABELS[id]?.icon || '📄',
+          rate: s.total ? Math.round(s.yes / s.total * 100) : 0,
+          ...s,
+        }))
         .sort((a, b) => b.rate - a.rate)
         .slice(0, 5)
     : [];
@@ -48,11 +65,19 @@ export default function AdminDashboard() {
         </p>
       </div>
 
+      {error && (
+        <div role="alert" style={{
+          marginBottom: '1rem', padding: '0.75rem 1rem',
+          background: 'var(--danger-light)', border: '1px solid var(--danger-border)',
+          color: 'var(--crimson-500)', borderRadius: 'var(--r-md)', fontSize: '0.85rem',
+        }}>{error}</div>
+      )}
+
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
         {[
-          { icon: <Building2 size={22} color="var(--brand-red)" />,  cls: 'red',   value: loading ? '—' : stats?.totalDealers,       label: 'Concessionnaires' },
-          { icon: <Users size={22} color="var(--success)" />,        cls: 'green', value: loading ? '—' : stats?.totalUsers,         label: 'Utilisateurs' },
+          { icon: <Building2 size={22} color="var(--brand-red)" />,  cls: 'red',   value: loading ? '—' : stats?.activeDealers ?? stats?.totalDealers ?? 0, label: 'Concessionnaires actifs' },
+          { icon: <Users size={22} color="var(--success)" />,        cls: 'green', value: loading ? '—' : stats?.activeUsers ?? stats?.totalUsers ?? 0,   label: 'Utilisateurs actifs' },
           { icon: <FileText size={22} color="var(--info)" />,        cls: 'blue',  value: loading ? '—' : stats?.totalPresentations, label: 'Présentations' },
           { icon: <TrendingUp size={22} color="var(--warning)" />,   cls: 'amber', value: loading ? '—' : `${stats?.avgProtectionRate || 0}%`, label: 'Taux de protection moyen' },
         ].map((s, i) => (
@@ -126,7 +151,9 @@ export default function AdminDashboard() {
           ) : topProducts.map(p => (
             <div key={p.id} style={{ marginBottom: '0.875rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-                <span style={{ fontSize: '0.825rem', fontWeight: 600 }}>{p.id}</span>
+                <span style={{ fontSize: '0.825rem', fontWeight: 600, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                  <span aria-hidden="true">{p.icon}</span>{p.label}
+                </span>
                 <span style={{ fontSize: '0.825rem', fontWeight: 800,
                   color: p.rate >= 60 ? 'var(--success)' : p.rate >= 30 ? 'var(--warning)' : 'var(--brand-red)' }}>
                   {p.rate}%

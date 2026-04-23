@@ -22,17 +22,32 @@ export default function Reports() {
   const [presentations, setPres]   = useState([]);
   const [analytics,     setAnalytics] = useState(null);
   const [loading,       setLoading] = useState(true);
+  const [error,         setError]   = useState('');
   const [tab,           setTab]     = useState('stats');
   const [dateFrom,      setDateFrom]= useState('');
   const [dateTo,        setDateTo]  = useState('');
 
   useEffect(() => {
     if (isDemo) { setLoading(false); return; }
-    getUserPresentations(currentUser.uid).then(pres => {
-      setPres(pres);
-      setAnalytics(computeAnalytics(pres));
-      setLoading(false);
-    });
+    if (!currentUser?.uid) { setLoading(false); return; }
+    let cancelled = false;
+    setError('');
+    setLoading(true);
+    (async () => {
+      try {
+        const pres = await getUserPresentations(currentUser.uid);
+        if (cancelled) return;
+        setPres(pres);
+        setAnalytics(computeAnalytics(pres));
+      } catch (e) {
+        if (cancelled) return;
+        console.error('[Reports] load error:', e);
+        setError('Impossible de charger vos rapports. Vérifiez votre connexion puis réessayez.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [currentUser, isDemo]);
 
   /* Apply date filter */
@@ -119,6 +134,21 @@ export default function Reports() {
           </div>
         ) : loading ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-tertiary)' }}>Chargement…</div>
+        ) : error ? (
+          <div
+            role="alert"
+            style={{
+              textAlign: 'center',
+              padding: '2rem',
+              background: 'var(--danger-light)',
+              border: '1px solid var(--danger-border)',
+              borderRadius: 'var(--r-xl)',
+              color: 'var(--crimson-500)',
+              fontWeight: 500,
+            }}
+          >
+            {error}
+          </div>
         ) : (
           <>
             {/* KPIs */}

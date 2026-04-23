@@ -199,11 +199,15 @@ function DealerRow({ dealer, onEdit, onToggle, onAddUser }) {
 
   const loadUsers = async () => {
     if (!usersLoaded) {
-      const u = await getUsersByDealer(dealer.id);
-      setUsers(u);
-      setUsersLoaded(true);
+      try {
+        const u = await getUsersByDealer(dealer.id);
+        setUsers(u);
+        setUsersLoaded(true);
+      } catch (e) {
+        console.error('[DealerManagement] users:', e);
+      }
     }
-    setExpanded(e => !e);
+    setExpanded((v) => !v);
   };
 
   return (
@@ -282,8 +286,12 @@ function DealerRow({ dealer, onEdit, onToggle, onAddUser }) {
               </span>
               <button className="btn-icon" style={{ width: 28, height: 28, color: u.active ? 'var(--success)' : 'var(--text-tertiary)' }}
                 onClick={async () => {
-                  await toggleUserActive(u.id, !u.active);
-                  setUsers(prev => prev.map(p => p.id === u.id ? { ...p, active: !p.active } : p));
+                  try {
+                    await toggleUserActive(u.id, !u.active);
+                    setUsers(prev => prev.map(p => p.id === u.id ? { ...p, active: !p.active } : p));
+                  } catch (e) {
+                    console.error('[DealerManagement] toggleUser:', e);
+                  }
                 }}>
                 {u.active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
               </button>

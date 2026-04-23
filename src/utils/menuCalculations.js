@@ -118,14 +118,30 @@ export function paymentForAddonCents(financing, addonCents) {
 }
 
 /**
+ * Coût affiché dans le bandeau « Paiement total estimé ».
+ *  - Financement / Location : paiement périodique TOTAL (véhicule + add-ons financés).
+ *  - Comptant : total du véhicule + add-ons financés (et taxes côté add-ons).
+ *
  * @returns {{ valueCents: number, isPeriodic: boolean }}
  */
 export function displayColumnCost(financing, addonCents) {
-  const periodic = paymentForAddonCents(financing, addonCents);
+  const safeAddOn = Math.round(addonCents || 0);
+  const periodic = paymentForAddonCents(financing, safeAddOn);
   if (periodic != null) {
     return { valueCents: periodic, isPeriodic: true };
   }
-  return { valueCents: Math.round(addonCents), isPeriodic: false };
+  // Comptant : total véhicule + protections
+  if (financing && financing.transactionType === 'comptant') {
+    const vehicleCents = Math.max(
+      0,
+      Math.round((financing.totalDueCents != null)
+        ? financing.totalDueCents
+        : (financing.capitalDollars || 0) * 100),
+    );
+    return { valueCents: vehicleCents + safeAddOn, isPeriodic: false };
+  }
+  // Fallback (financing absent, etc.) : seulement les add-ons
+  return { valueCents: safeAddOn, isPeriodic: false };
 }
 
 /**
@@ -154,10 +170,15 @@ export function importantProductIds(placements) {
 }
 
 /**
+ * Écart entre le nouveau versement (véhicule + add-ons) et le versement de base.
+ * En comptant, renvoie simplement le montant des add-ons (add-on pur).
  * @returns {number|null}
  */
 export function deltaVersusBase(financing, addonCents) {
   if (!financing) return null;
+  if (financing.transactionType === 'comptant') {
+    return Math.round(addonCents || 0);
+  }
   const p = paymentForAddonCents(financing, addonCents);
   if (p == null) return null;
   return p - (financing.basePaymentCents || 0);

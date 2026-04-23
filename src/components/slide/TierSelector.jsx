@@ -7,7 +7,11 @@ import { getEnrichedById, resolvePriceCents } from '../../utils/pricingResolver.
  * qui convient, le prix associé est stocké dans les réponses mais reste caché ici.
  */
 export default function TierSelector({ product, dealerSettings, tierId, onChange }) {
-  const e = getEnrichedById(product.id) || product;
+  if (!product) return null;
+  // Priorité au produit passé en prop (déjà merged / dealercustom). Fallback catalogue enrichi.
+  const e = product.pricingMode === 'tiers' && product.tierGroups?.length
+    ? product
+    : (getEnrichedById(product.id) || product);
   if (e?.pricingMode !== 'tiers' || !e.tierGroups?.length) return null;
 
   return (
@@ -56,13 +60,13 @@ export default function TierSelector({ product, dealerSettings, tierId, onChange
               }}
             >
               {g.tiers.map((t) => {
-                // Le prix reste stocké mais non affiché au client
-                const c = resolvePriceCents(e, dealerSettings, t.id, g.id);
+                // Le prix reste stocké côté state mais n'est exposé nulle part sur le DOM.
+                // (pas d'attribut data-* pour éviter toute fuite côté écran client)
+                void resolvePriceCents(e, dealerSettings, t.id, g.id);
                 const checked = tierId === t.id;
                 return (
                   <label
                     key={t.id}
-                    data-price-cents={c}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',

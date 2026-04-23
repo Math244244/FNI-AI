@@ -32,17 +32,29 @@ export default function PresentationSummary({
   saving,
   onQuit,
 }) {
-  const { financing, dealerSettingsSnapshot } = usePresentation();
+  const { financing, dealerSettingsSnapshot, menuState } = usePresentation();
 
-  const interested = products.filter((p) => getInterest(responses[p.id]) === 'yes');
-  const declined   = products.filter((p) => getInterest(responses[p.id]) === 'no');
-  const rate       = products.length
-    ? Math.round((interested.length / products.length) * 100)
+  // Source de vérité : menu scellé s'il existe, sinon décisions des slides
+  const sealedPlacements = menuState?.placements;
+  const menuSealed = !!sealedPlacements && Object.keys(sealedPlacements).length > 0;
+
+  const interested = menuSealed
+    ? products.filter((p) => sealedPlacements[p.id] === 'important')
+    : products.filter((p) => getInterest(responses[p.id]) === 'yes');
+  const declined = menuSealed
+    ? products.filter((p) => sealedPlacements[p.id] === 'pas_important')
+    : products.filter((p) => getInterest(responses[p.id]) === 'no');
+
+  const denom = menuSealed
+    ? (interested.length + declined.length)
+    : products.length;
+  const rate = denom > 0
+    ? Math.round((interested.length / denom) * 100)
     : 0;
   const duration = Object.values(timePerProd).reduce((a, b) => a + b, 0);
   const durationLabel = `${Math.floor(duration / 60)} min ${duration % 60}s`;
 
-  // Calculs financiers
+  // Calculs financiers — toujours sur la liste retenue
   const interestedIds = interested.map((p) => p.id);
   const addOnCents = sumFinancedAddOnCentsForIds(
     interestedIds, products, responses, dealerSettingsSnapshot,

@@ -12,24 +12,50 @@ export default function PricingPanel({ products, pricing, onChange }) {
   const dealer = { pricing: pricing || {} };
 
   const setFixed = (productId, dollarsStr) => {
-    const n = parseFloat(String(dollarsStr).replace(',', '.'), 10);
+    const trimmed = String(dollarsStr || '').trim();
+    // Vide → on efface l'override (reprise du montant de référence catalogue)
+    if (trimmed === '') {
+      const next = { ...(pricing || {}) };
+      const existing = next[productId];
+      if (existing) {
+        const { defaultPriceCents: _d, ...rest } = existing;
+        if (Object.keys(rest).length === 0) delete next[productId];
+        else next[productId] = rest;
+      }
+      onChange(next);
+      return;
+    }
+    const n = parseFloat(trimmed.replace(',', '.'));
     if (Number.isNaN(n)) return;
     onChange({
-      ...pricing,
-      [productId]: { ...pricing[productId], defaultPriceCents: Math.round(n * 100) },
+      ...(pricing || {}),
+      [productId]: { ...(pricing?.[productId] || {}), defaultPriceCents: Math.round(n * 100) },
     });
   };
 
   const setTier = (productId, groupId, tierId, dollarsStr) => {
-    const n = parseFloat(String(dollarsStr).replace(',', '.'), 10);
+    const trimmed = String(dollarsStr || '').trim();
+    const prevG = pricing?.[productId]?.tierGroups || {};
+    if (trimmed === '') {
+      const g = { ...(prevG[groupId] || {}) };
+      delete g[tierId];
+      const nextGroups = { ...prevG };
+      if (Object.keys(g).length === 0) delete nextGroups[groupId];
+      else nextGroups[groupId] = g;
+      onChange({
+        ...(pricing || {}),
+        [productId]: { ...(pricing?.[productId] || {}), tierGroups: nextGroups },
+      });
+      return;
+    }
+    const n = parseFloat(trimmed.replace(',', '.'));
     if (Number.isNaN(n)) return;
-    const prevG = pricing[productId]?.tierGroups || {};
-    const g = { ...prevG[groupId] };
+    const g = { ...(prevG[groupId] || {}) };
     g[tierId] = Math.round(n * 100);
     onChange({
-      ...pricing,
+      ...(pricing || {}),
       [productId]: {
-        ...pricing[productId],
+        ...(pricing?.[productId] || {}),
         tierGroups: { ...prevG, [groupId]: g },
       },
     });

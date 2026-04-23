@@ -2,7 +2,7 @@ import { getInterest } from '../utils/responseHelpers.js';
 import { db } from '../firebase';
 import {
   collection, addDoc, serverTimestamp, query,
-  where, orderBy, getDocs, getDoc, doc, updateDoc, setDoc,
+  where, orderBy, limit, getDocs, getDoc, doc, updateDoc, setDoc,
 } from 'firebase/firestore';
 
 /* ═══════════════════════════════════════
@@ -30,11 +30,20 @@ export async function savePresentation(
   financing = null,
   menuFinal = null,
 ) {
-  const interested = Object.entries(responses)
-    .filter(([, v]) => getInterest(v) === 'yes')
-    .map(([k]) => k);
+  // « Intéressé » = décision positive du vendeur : si le menu est scellé,
+  // on prend la colonne « important » comme vérité ; sinon yes + maybe depuis les slides.
+  const sealed = !!menuFinal?.placements;
+  const interested = sealed
+    ? Object.entries(menuFinal.placements)
+        .filter(([, v]) => v === 'important')
+        .map(([k]) => k)
+    : Object.entries(responses)
+        .filter(([, v]) => ['yes', 'maybe'].includes(getInterest(v)))
+        .map(([k]) => k);
 
-  const total    = Object.keys(responses).length;
+  const total    = sealed
+    ? Object.keys(menuFinal.placements).length
+    : Object.keys(responses).length;
   const rate     = total > 0 ? Math.round((interested.length / total) * 100) : 0;
   const avgTime  = Object.values(timePerProduct).length
     ? Math.round(Object.values(timePerProduct).reduce((a, b) => a + b, 0) / Object.values(timePerProduct).length)
@@ -105,11 +114,14 @@ export async function getPublicSnapshot(token) {
 /* ═══════════════════════════════════════
    GET presentations for a user
    ═══════════════════════════════════════ */
-export async function getUserPresentations(userId) {
+export const DEFAULT_LIST_LIMIT = 500;
+
+export async function getUserPresentations(userId, max = DEFAULT_LIST_LIMIT) {
   const q = query(
     collection(db, 'presentations'),
     where('userId', '==', userId),
     orderBy('createdAt', 'desc'),
+    limit(max),
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -118,23 +130,25 @@ export async function getUserPresentations(userId) {
 /* ═══════════════════════════════════════
    GET presentations for a dealer
    ═══════════════════════════════════════ */
-export async function getDealerPresentations(dealerId) {
+export async function getDealerPresentations(dealerId, max = DEFAULT_LIST_LIMIT) {
   const q = query(
     collection(db, 'presentations'),
     where('dealerId', '==', dealerId),
     orderBy('createdAt', 'desc'),
+    limit(max),
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 /* ═══════════════════════════════════════
-   GET ALL presentations (admin)
+   GET ALL presentations (admin) — borné par défaut
    ═══════════════════════════════════════ */
-export async function getAllPresentations() {
+export async function getAllPresentations(max = DEFAULT_LIST_LIMIT) {
   const q = query(
     collection(db, 'presentations'),
     orderBy('createdAt', 'desc'),
+    limit(max),
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));

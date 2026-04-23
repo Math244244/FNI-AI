@@ -12,7 +12,7 @@ const NAV = [
 ];
 
 export default function AdminLayout() {
-  const { currentUser, userProfile, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
@@ -31,7 +31,7 @@ export default function AdminLayout() {
             display: 'flex', alignItems: 'center', gap: '0.375rem',
             fontSize: '0.8rem', color: 'var(--text-tertiary)', fontWeight: 600,
           }}>
-            <Shield size={13} color="var(--brand-red)" /> SUPER ADMIN
+            <Shield size={13} color="var(--brand-red)" /> Super administrateur
           </span>
         </div>
         <div className="topbar-actions">

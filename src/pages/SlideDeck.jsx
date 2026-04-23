@@ -70,21 +70,26 @@ export default function SlideDeck() {
   const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      if (!userProfile?.dealerId) {
-        // Démo / pas de dealer : utiliser le catalogue de base enrichi
-        setAllProducts(ENRICHED_PRODUCTS);
-        return;
+      try {
+        if (!userProfile?.dealerId) {
+          if (!cancelled) setAllProducts(ENRICHED_PRODUCTS);
+          return;
+        }
+        const s = await loadDealerSettings(userProfile.dealerId);
+        if (cancelled) return;
+        setDealerSettingsSnapshot(s);
+        const merged = buildMergedProductListFromSettings(s, PRODUCTS)
+          .filter((p) => p.active !== false)
+          .map((p) => enrichProductWithPricing(p));
+        if (!cancelled && merged.length) setAllProducts(merged);
+      } catch (e) {
+        console.error('[SlideDeck] loadDealerSettings:', e);
+        if (!cancelled) setAllProducts(ENRICHED_PRODUCTS);
       }
-      const s = await loadDealerSettings(userProfile.dealerId);
-      setDealerSettingsSnapshot(s);
-
-      // Applique l'ordre, les désactivations et les produits custom du dealer.
-      const merged = buildMergedProductListFromSettings(s, PRODUCTS)
-        .filter((p) => p.active !== false)
-        .map((p) => enrichProductWithPricing(p));
-      if (merged.length) setAllProducts(merged);
     })();
+    return () => { cancelled = true; };
   }, [userProfile?.dealerId, setDealerSettingsSnapshot]);
 
   /* ── Timer slide ── */
@@ -200,17 +205,32 @@ export default function SlideDeck() {
   }, [vehicle]);
 
   /* ── Broadcast RTDB pour ClientView (mode miroir) ── */
+  const sessionInitRef = useRef(false);
   useEffect(() => {
-    if (!vehicle) return;
+    if (!vehicle || sessionInitRef.current) return;
+    sessionInitRef.current = true;
     initSession(sessionId.current, {
-      vehicle, clientName: clientName || '', productIndex: 0, responses: {},
+      vehicle,
+      clientName: clientName || '',
+      productIndex: 0,
+      productId: products[0]?.id || null,
+      responses: {},
     }).catch(() => {});
-  }, [vehicle, clientName]);
+  }, [vehicle, clientName, products]);
 
   useEffect(() => {
     if (!vehicle || !product) return;
     updateSession(sessionId.current, {
       productIndex: index,
+      productId: product.id,
+      productSnapshot: {
+        id: product.id,
+        title: product.title,
+        icon: product.icon,
+        hook: product.hook,
+        risk: product.risk,
+        solution: product.solution,
+      },
       responses,
     }).catch(() => {});
   }, [vehicle, product, index, responses]);
@@ -652,10 +672,11 @@ export default function SlideDeck() {
       {/* ─── Decision bar (pas de bouton « Suivant » : choix obligatoire) ─── */}
       <DecisionBar
         interest={interestLevel}
-        onYes={() => respond('yes')}
-        onNo={() => respond('no')}
+        onYes={() => { if (canProceed) respond('yes'); }}
+        onNo={() => { if (canProceed) respond('no'); }}
         onPrev={index > 0 ? goPrev : null}
         gateFraction={gateFraction}
+        disabled={!canProceed}
       />
 
       {/* ─── Help overlay ─── */}

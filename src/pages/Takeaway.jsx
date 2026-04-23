@@ -52,8 +52,28 @@ export default function Takeaway() {
     );
   }
 
-  const { vehicle, clientName, responses, financing, placements: rawPlacements, dealerPricing } = data;
-  const products = ENRICHED_PRODUCTS.filter((p) => getInterest(responses?.[p.id]) != null);
+  const {
+    vehicle,
+    clientName,
+    responses,
+    financing,
+    placements: rawPlacements,
+    dealerPricing,
+    productsSnapshot,
+  } = data;
+
+  // Source de vérité : snapshot de catalogue publié par le vendeur.
+  // Sinon on recompose à partir d'ENRICHED_PRODUCTS + toutes les clés `responses`
+  // pour que les produits custom ne disparaissent pas.
+  const catalog = Array.isArray(productsSnapshot) && productsSnapshot.length
+    ? productsSnapshot
+    : [
+        ...ENRICHED_PRODUCTS,
+        ...Object.keys(responses || {})
+          .filter((id) => !ENRICHED_PRODUCTS.some((p) => p.id === id))
+          .map((id) => ({ id, title: id, icon: null, isCustom: true })),
+      ];
+  const products = catalog.filter((p) => getInterest(responses?.[p.id]) != null);
   const ds = dealerPricing != null ? { pricing: dealerPricing } : null;
 
   // Migration legacy (essentiel/recommande/premium/rejet → important/pas_important)
