@@ -1,9 +1,0 @@
-refonte prestige: SlideDeck 2 colonnes (texte/vehicule), prix masque par defaut; MenuSelling binaire Important/Pas important avec total live; Takeaway + Reports adaptes; dealer customs injectes dans slides+menu
-
-- SlideDeck: layout 45/55 texte+risque+solution a gauche, vehicule grand a droite, note directeur contrastee, reveal prix discret (bouton vendeur)
-- MenuSelling: 2 colonnes DnD + DragOverlay, bandeau total live, paiement vs base, bouton sceller
-- Takeaway: vue publique 2 colonnes + total heros
-- PresentationSummary: labels Important / Pas important
-- Reports + computeAnalytics: mix binaire (scelles, part importants)
-- SlideDeck + MenuSelling: utilisent la liste mergee (custom dealer + ordre + desactives) -> ajouts de produits effectifs a tout moment
-- menuCalculations: helpers binaires (defaultBinaryPlacements, importantProductIds) + tests vitest
