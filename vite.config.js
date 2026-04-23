@@ -26,6 +26,10 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         maximumFileSizeToCacheInBytes: 5_000_000,
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [
+          /^\/__\//, /^\/google\//, /^\/identitytoolkit/, /^\/firestore/, /^\/v1\//,
+        ],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
@@ -42,6 +46,15 @@ export default defineConfig({
               cacheName: 'vehicle-images',
               expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
+          },
+          {
+            // Ne jamais mettre en cache les API Firebase (auth/firestore/rtdb).
+            urlPattern: ({ url }) =>
+              url.hostname.endsWith('.googleapis.com') ||
+              url.hostname.endsWith('.firebaseio.com') ||
+              url.hostname.endsWith('.firebasedatabase.app') ||
+              url.hostname.endsWith('.cloudfunctions.net'),
+            handler: 'NetworkOnly',
           },
         ],
       },

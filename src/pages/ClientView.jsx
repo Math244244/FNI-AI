@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { subscribeSession } from '../services/clientViewService';
-import { PRODUCTS } from '../data/products';
+import { ENRICHED_PRODUCTS } from '../data/productPricing';
 import { getInterest } from '../utils/responseHelpers.js';
 import VehicleImage from '../components/slide/VehicleImage';
 import { Check } from 'lucide-react';
@@ -51,8 +51,9 @@ export default function ClientView() {
   }
 
   const { vehicle, clientName, productIndex = 0, responses = {} } = state;
-  const product = PRODUCTS[productIndex] || PRODUCTS[0];
-  const interest = getInterest(responses[product.id]);
+  const product = ENRICHED_PRODUCTS[productIndex] || ENRICHED_PRODUCTS[0];
+  const interest = getInterest(responses[product?.id]);
+  if (!product) return null;
 
   return (
     <div style={{
@@ -81,12 +82,15 @@ export default function ClientView() {
           {clientName ? `${clientName} · ` : ''}{vehicle?.year} {vehicle?.make} {vehicle?.model}
         </span>
       </header>
-      <main style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gridTemplateRows: '1fr 1fr',
-        overflow: 'hidden',
-      }}>
+      <main
+        aria-live="polite"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          overflow: 'hidden',
+        }}
+      >
         <section style={{ padding: '2.5rem 3rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <span className="overline">Accroche</span>
           <h1 style={{

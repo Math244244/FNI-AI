@@ -324,7 +324,7 @@ function Section({ title, icon, tone, count, children }) {
       }}>
         {icon}
         <span>{title}</span>
-        <Badge tone={tone === 'green' ? 'green' : tone === 'red' ? 'red' : 'gray'} style={{ marginLeft: 'auto' }}>
+        <Badge tone={tone || 'gray'} style={{ marginLeft: 'auto' }}>
           {count}
         </Badge>
       </div>

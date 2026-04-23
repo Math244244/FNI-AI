@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+
+const GoogleGlyph = () => (
+  <svg width="14" height="14" viewBox="0 0 48 48" aria-hidden="true">
+    <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.8 32.4 29.4 35.5 24 35.5c-6.3 0-11.5-5.2-11.5-11.5S17.7 12.5 24 12.5c2.9 0 5.5 1.1 7.5 2.9l5.7-5.7C33.5 6.5 29 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5 43.5 34.8 43.5 24c0-1.2-.1-2.3-.3-3.5z"/>
+    <path fill="#FF3D00" d="M6.3 14.1l6.6 4.8C14.7 15.1 19 12.5 24 12.5c2.9 0 5.5 1.1 7.5 2.9l5.7-5.7C33.5 6.5 29 4.5 24 4.5 16.3 4.5 9.7 8.9 6.3 14.1z"/>
+    <path fill="#4CAF50" d="M24 43.5c4.9 0 9.3-1.9 12.7-5l-5.9-4.9c-2 1.4-4.5 2.3-6.8 2.3-5.4 0-9.8-3.5-11.3-8.4l-6.5 5C9.4 38.9 16.1 43.5 24 43.5z"/>
+    <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 2.1-2 3.9-3.8 5.2l5.9 4.9c-.4.4 6.1-4.4 6.1-14.1 0-1.2-.1-2.3-.3-3.5z"/>
+  </svg>
+);
 import Button from '../components/ui/Button';
 
 export default function Login() {
@@ -263,7 +272,7 @@ export default function Login() {
             onClick={handleGoogle}
             disabled={loading}
             style={{ width: '100%', marginBottom: '0.5rem' }}
-            icon={<img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="" style={{ width: 14, height: 14 }} />}
+            icon={<GoogleGlyph />}
           >
             Continuer avec Google
           </Button>

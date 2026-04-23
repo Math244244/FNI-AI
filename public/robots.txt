@@ -1,0 +1,13 @@
+User-agent: *
+Disallow: /admin
+Disallow: /client-view
+Disallow: /presentation
+Disallow: /menu
+Disallow: /settings
+Disallow: /reports
+Disallow: /t/
+
+Allow: /
+Allow: /login
+
+Sitemap: https://fni-ai.web.app/sitemap.xml

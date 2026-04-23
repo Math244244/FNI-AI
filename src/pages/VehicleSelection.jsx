@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePresentation } from '../context/PresentationContext';
-import { useAuth } from '../context/AuthContext';
 import {
   ChevronLeft, User, Car, ArrowRight, SkipForward, Sparkles, RefreshCcw,
   Banknote, Repeat2, DollarSign, ScanLine, Zap,
@@ -27,7 +26,6 @@ export default function VehicleSelection() {
     setMode, setVehicle, setClientName,
     setCondition, setTransactionType, startSession, setFinancing,
   } = usePresentation();
-  useAuth();
 
   const { recents, addRecent, clearRecents } = useRecentVehicles();
 
@@ -157,8 +155,8 @@ export default function VehicleSelection() {
         basePaymentCents: null,
       });
     } else {
-      const cap = parseFloat(String(capitalDollars).replace(/\s/g, '').replace(',', '.'), 10);
-      const rate = parseFloat(String(interestRate).replace(',', '.'), 10);
+      const cap = parseFloat(String(capitalDollars).replace(/\s/g, '').replace(',', '.'));
+      const rate = parseFloat(String(interestRate).replace(',', '.'));
       const parsed = financingSchema.safeParse({
         transactionType: transType,
         capitalDollars: cap,

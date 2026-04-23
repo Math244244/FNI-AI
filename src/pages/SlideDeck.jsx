@@ -6,6 +6,7 @@ import { CHAPTERS } from '../data/products';
 import { ENRICHED_PRODUCTS } from '../data/productPricing';
 import { loadDealerSettings } from '../services/settingsService';
 import { savePresentation, upsertDraft } from '../services/presentationService';
+import { initSession, updateSession } from '../services/clientViewService';
 import { getInterest, buildResponseV2Entry } from '../utils/responseHelpers';
 import { getEnrichedById, resolvePriceCents } from '../utils/pricingResolver.js';
 import { X, Clock, Keyboard, Check } from 'lucide-react';
@@ -25,6 +26,7 @@ import { currencyMonthly } from '../utils/typograph';
 
 import PresentationSummary from './PresentationSummary';
 import MenuSelling from './MenuSelling';
+import WelcomeScreen from './WelcomeScreen';
 
 const MIN_SLIDE_SECONDS = parseInt(
   typeof window !== 'undefined' ? (localStorage.getItem('ap_min_slide') || '0') : '0', 10,
@@ -50,9 +52,10 @@ export default function SlideDeck() {
 
   const [slideTime, setSlideTime] = useState(0);
   const [timePerProd, setTimePerProd] = useState({});
+  const [showWelcome, setShowWelcome] = useState(!!clientName);
   const timerRef = useRef(null);
-  const mountedAt = useRef(Date.now());
   const draftId = useRef(`draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  const sessionId = useRef(`sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
   const product = products[index];
   const total   = products.length;
@@ -188,6 +191,32 @@ export default function SlideDeck() {
     }
   }, [vehicle]);
 
+  /* ── Broadcast RTDB pour ClientView (mode miroir) ── */
+  useEffect(() => {
+    if (!vehicle) return;
+    initSession(sessionId.current, {
+      vehicle, clientName: clientName || '', productIndex: 0, responses: {},
+    }).catch(() => {});
+  }, [vehicle, clientName]);
+
+  useEffect(() => {
+    if (!vehicle || !product) return;
+    updateSession(sessionId.current, {
+      productIndex: index,
+      responses,
+    }).catch(() => {});
+  }, [vehicle, product, index, responses]);
+
+  /* ── Welcome screen 3s ── */
+  if (showWelcome && clientName) {
+    return (
+      <WelcomeScreen
+        duration={2800}
+        onComplete={() => setShowWelcome(false)}
+      />
+    );
+  }
+
   if (postDeck === 'summary') {
     return (
       <PresentationSummary
@@ -320,6 +349,9 @@ export default function SlideDeck() {
       <div
         key={product.id}
         className="slide-grid animate-up"
+        role="region"
+        aria-label={`Produit ${index + 1} sur ${total} : ${product.title}`}
+        aria-live="polite"
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
@@ -590,14 +622,23 @@ export default function SlideDeck() {
             grid-template-columns: 1fr !important;
             grid-template-rows: auto auto auto auto !important;
           }
+          .slide-deck .slide-grid > section {
+            border-right: none !important;
+            border-bottom: 1px solid var(--border-hair) !important;
+          }
+          .slide-deck .slide-grid > section:last-child {
+            border-bottom: none !important;
+          }
         }
-        .slide-deck .slide-grid > section {
+        /* Dividers internes uniquement : Q1 (haut-gauche) et Q3 (bas-gauche) ont
+           une bordure droite ; Q1 et Q2 ont une bordure basse. */
+        .slide-deck .slide-grid > section:nth-child(1),
+        .slide-deck .slide-grid > section:nth-child(3) {
           border-right: 1px solid var(--border-hair);
-          border-bottom: 1px solid var(--border-hair);
         }
-        .slide-deck .slide-grid > section:nth-child(2n),
-        .slide-deck .slide-grid > section:nth-last-child(-n+2) {
-          /* nothing special, but keeps dividers */
+        .slide-deck .slide-grid > section:nth-child(1),
+        .slide-deck .slide-grid > section:nth-child(2) {
+          border-bottom: 1px solid var(--border-hair);
         }
       `}</style>
     </div>
