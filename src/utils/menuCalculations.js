@@ -1,4 +1,4 @@
-import { paymentPerPeriodCents } from './paymentCalculator.js';
+import { paymentPerPeriodCents, leasePaymentPerPeriodCents } from './paymentCalculator.js';
 import {
   getEnrichedById,
   resolveCustomProductPriceCents,
@@ -97,7 +97,18 @@ export function paymentForAddonCents(financing, addonCents) {
   if (!financing || financing.transactionType === 'comptant' || financing.basePaymentCents == null) {
     return null;
   }
-  const cap = Math.max(0, Math.round(financing.capitalDollars * 100) + Math.round(addonCents));
+  const cap = Math.max(0, Math.round((financing.capitalDollars || 0) * 100) + Math.round(addonCents));
+  if (financing.transactionType === 'location') {
+    const resid = Math.max(0, Math.round((financing.residualDollars || 0) * 100));
+    return leasePaymentPerPeriodCents({
+      annualRatePercent: financing.interestRate,
+      termMonths: financing.termMonths,
+      capitalCents: cap,
+      residualCents: resid,
+      frequency: financing.paymentFrequency,
+      annuityDue: !!financing.annuityDue,
+    });
+  }
   return paymentPerPeriodCents({
     annualRatePercent: financing.interestRate,
     termMonths: financing.termMonths,

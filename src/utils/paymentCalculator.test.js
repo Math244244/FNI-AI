@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { numberOfPayments, paymentPerPeriodCents, paymentPerPeriodDollars } from './paymentCalculator.js';
+import {
+  numberOfPayments,
+  paymentPerPeriodCents,
+  paymentPerPeriodDollars,
+  leasePaymentPerPeriodCents,
+  leaseTotalInterestCents,
+} from './paymentCalculator.js';
 import { withQcTaxCents } from './taxes.js';
 import { Money } from './money.js';
 
@@ -48,5 +54,60 @@ describe('paymentPerPeriodDollars', () => {
     });
     expect(x).toBeGreaterThan(0);
     expect(Number.isFinite(x)).toBe(true);
+  });
+});
+
+describe('leasePaymentPerPeriodCents', () => {
+  it('taux 0 → (capital − résiduel) / n', () => {
+    const pay = leasePaymentPerPeriodCents({
+      annualRatePercent: 0,
+      termMonths: 48,
+      capitalCents: 40000_00,
+      residualCents: 20000_00,
+      frequency: 'monthly',
+    });
+    expect(pay).toBe(Math.round((40000_00 - 20000_00) / 48));
+  });
+
+  it('location < prêt pour même capital / durée / taux (grâce à la résiduelle)', () => {
+    const lease = leasePaymentPerPeriodCents({
+      annualRatePercent: 4.9,
+      termMonths: 48,
+      capitalCents: 40000_00,
+      residualCents: 20000_00,
+      frequency: 'monthly',
+    });
+    const loan = paymentPerPeriodCents({
+      annualRatePercent: 4.9,
+      termMonths: 48,
+      principalCents: 40000_00,
+      frequency: 'monthly',
+    });
+    expect(lease).toBeGreaterThan(0);
+    expect(lease).toBeLessThan(loan);
+  });
+
+  it('annuity-due < annuity-ordinary (paiement avancé)', () => {
+    const common = {
+      annualRatePercent: 6,
+      termMonths: 48,
+      capitalCents: 40000_00,
+      residualCents: 20000_00,
+      frequency: 'monthly',
+    };
+    const ordinary = leasePaymentPerPeriodCents({ ...common, annuityDue: false });
+    const due      = leasePaymentPerPeriodCents({ ...common, annuityDue: true });
+    expect(due).toBeLessThan(ordinary);
+  });
+
+  it('intérêt total > 0 pour taux > 0', () => {
+    const interest = leaseTotalInterestCents({
+      annualRatePercent: 4.9,
+      termMonths: 48,
+      capitalCents: 40000_00,
+      residualCents: 20000_00,
+      frequency: 'monthly',
+    });
+    expect(interest).toBeGreaterThan(0);
   });
 });
