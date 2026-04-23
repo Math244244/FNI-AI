@@ -28,10 +28,27 @@ export const REC_YEARS = Array.from(
 );
 
 // ── Catégories principales ──────────────────────────────────────
+// Photos hébergées sur Unsplash (CDN direct, stable, sans API key).
+// Les paramètres w/q/fit sont gérés par Unsplash côté serveur.
 export const CATEGORIES = [
-  { id: 'automobile', label: 'Automobile', icon: '🚗' },
-  { id: 'loisirs',    label: 'Loisirs',    icon: '🏍️' },
-  { id: 'vr',         label: 'VR',         icon: '🚐' },
+  {
+    id: 'automobile',
+    label: 'Automobile',
+    icon: '🚗',
+    photo: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=320&h=200&fit=crop&q=75&auto=format',
+  },
+  {
+    id: 'loisirs',
+    label: 'Loisirs',
+    icon: '🏍️',
+    photo: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=320&h=200&fit=crop&q=75&auto=format',
+  },
+  {
+    id: 'vr',
+    label: 'VR',
+    icon: '🚐',
+    photo: 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=320&h=200&fit=crop&q=75&auto=format',
+  },
 ];
 
 export const LOISIR_TYPES = [

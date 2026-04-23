@@ -64,8 +64,22 @@ export default function Combobox({
     if (disabled) return;
     setQuery('');
     setOpen(true);
-    requestAnimationFrame(() => inputRef.current?.focus());
   }, [disabled]);
+
+  // Focus automatique du champ de recherche dès l'ouverture (1-clic = taper directement)
+  useEffect(() => {
+    if (!open) return;
+    // Double RAF + fallback setTimeout pour contrer les navigateurs qui rendent le focus au trigger
+    const tryFocus = () => {
+      const el = inputRef.current;
+      if (el && document.activeElement !== el) el.focus({ preventScroll: true });
+    };
+    requestAnimationFrame(() => {
+      requestAnimationFrame(tryFocus);
+    });
+    const t = setTimeout(tryFocus, 50);
+    return () => clearTimeout(t);
+  }, [open]);
 
   const closeDropdown = useCallback(() => {
     setOpen(false);
@@ -213,7 +227,20 @@ export default function Combobox({
         aria-haspopup="listbox"
         aria-label={ariaLabel}
         onClick={onTrigger}
-        onKeyDown={handleKey}
+        onKeyDown={(e) => {
+          if (disabled) return;
+          // Si l'utilisateur tape un caractère imprimable alors que le dropdown
+          // n'est pas encore ouvert : on ouvre et on injecte la lettre dans le
+          // champ de recherche (= vrai comportement « un seul clic »).
+          if (!open && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            e.preventDefault();
+            setQuery(e.key);
+            setAct(0);
+            setOpen(true);
+            return;
+          }
+          handleKey(e);
+        }}
         disabled={disabled}
         data-avp-combobox
         style={{

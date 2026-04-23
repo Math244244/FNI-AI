@@ -406,52 +406,115 @@ export default function VehicleSelection() {
 
               <div className="divider-gold" style={{ margin: '18px 0' }} />
 
-              {/* Catégorie */}
+              {/* Catégorie — vraies photos */}
               <div style={{ marginBottom: 18 }}>
                 <label className="form-label">Catégorie</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {CATEGORIES.map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => handleCategoryChange(cat.id)}
-                      style={{
-                        flex: 1,
-                        padding: '0.85rem 0.5rem',
-                        borderRadius: 'var(--r-md)',
-                        border: `1px solid ${category === cat.id ? 'var(--or-700)' : 'var(--border-md)'}`,
-                        background: category === cat.id ? 'var(--or-100)' : 'var(--bg-card)',
-                        cursor: 'pointer',
-                        transition: 'var(--tx)',
-                        display: 'flex', flexDirection: 'column',
-                        alignItems: 'center', gap: 6,
-                      }}
-                    >
-                      <span style={{ fontSize: '1.3rem' }}>{cat.icon}</span>
-                      <span style={{
-                        fontSize: 'var(--fs-sm)',
-                        fontWeight: category === cat.id ? 700 : 500,
-                        color: category === cat.id ? 'var(--or-900)' : 'var(--text-primary)',
-                      }}>
-                        {cat.label}
-                      </span>
-                    </button>
-                  ))}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  {CATEGORIES.map(cat => {
+                    const active = category === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => handleCategoryChange(cat.id)}
+                        style={{
+                          position: 'relative',
+                          padding: 0,
+                          borderRadius: 'var(--r-lg)',
+                          border: `2px solid ${active ? 'var(--or-500)' : 'var(--border-md)'}`,
+                          background: 'var(--bg-card)',
+                          cursor: 'pointer',
+                          transition: 'var(--tx)',
+                          overflow: 'hidden',
+                          aspectRatio: '16 / 9',
+                          boxShadow: active ? '0 8px 24px rgba(184,147,90,0.28)' : 'none',
+                        }}
+                      >
+                        <img
+                          src={cat.photo}
+                          alt={cat.label}
+                          loading="lazy"
+                          decoding="async"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const fb = e.currentTarget.nextElementSibling;
+                            if (fb) fb.style.display = 'flex';
+                          }}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            display: 'block',
+                            filter: active ? 'none' : 'saturate(0.85) brightness(0.9)',
+                            transition: 'filter 0.2s var(--ease-out)',
+                          }}
+                        />
+                        {/* Fallback en cas d'échec de chargement */}
+                        <span
+                          aria-hidden
+                          style={{
+                            display: 'none',
+                            position: 'absolute',
+                            inset: 0,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '2.2rem',
+                            background: 'var(--bg-subtle)',
+                          }}
+                        >
+                          {cat.icon}
+                        </span>
+                        {/* Gradient bas pour lisibilité du label */}
+                        <span
+                          aria-hidden
+                          style={{
+                            position: 'absolute',
+                            left: 0, right: 0, bottom: 0, height: '55%',
+                            background: active
+                              ? 'linear-gradient(180deg, transparent 0%, rgba(10,10,12,0.85) 100%)'
+                              : 'linear-gradient(180deg, transparent 0%, rgba(10,10,12,0.78) 100%)',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                        <span
+                          style={{
+                            position: 'absolute',
+                            left: 0, right: 0, bottom: 8,
+                            textAlign: 'center',
+                            fontSize: 'var(--fs-sm)',
+                            fontWeight: active ? 800 : 700,
+                            letterSpacing: '0.02em',
+                            color: active ? 'var(--or-500)' : '#fff',
+                            textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                          }}
+                        >
+                          {cat.label}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Sous-type */}
+              {/* Sous-type — grille égale pour éviter une ligne orpheline */}
               {needsSubType && (
                 <div style={{ marginBottom: 18 }}>
                   <label className="form-label">
                     {category === 'loisirs' ? 'Type de véhicule récréatif' : 'Type de VR'}
                   </label>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: `repeat(${subTypes.length}, minmax(0, 1fr))`,
+                      gap: 8,
+                    }}
+                  >
                     {subTypes.map(st => (
                       <button
                         key={st.id}
                         onClick={() => handleSubTypeChange(st.id)}
                         style={{
-                          padding: '0.5rem 0.95rem',
+                          padding: '0.55rem 0.4rem',
+                          minHeight: 42,
                           borderRadius: 'var(--r-full)',
                           border: `1px solid ${subType === st.id ? 'var(--or-700)' : 'var(--border-md)'}`,
                           background: subType === st.id ? 'var(--or-100)' : 'var(--bg-card)',
@@ -460,10 +523,22 @@ export default function VehicleSelection() {
                           fontSize: 'var(--fs-sm)',
                           fontWeight: subType === st.id ? 700 : 500,
                           color: subType === st.id ? 'var(--or-900)' : 'var(--text-secondary)',
-                          display: 'flex', alignItems: 'center', gap: 6,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
                         }}
+                        title={st.label}
                       >
-                        <span>{st.icon}</span> {st.label}
+                        <span style={{ flexShrink: 0 }}>{st.icon}</span>
+                        <span style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>{st.label}</span>
                       </button>
                     ))}
                   </div>
