@@ -140,8 +140,9 @@ function DropColumn({ colId, label, subtitle, accent, icon, count, children }) {
         </h3>
         <span style={{
           marginLeft: 'auto',
+          fontFamily: '"Inter", system-ui, -apple-system, sans-serif',
           fontSize: 'var(--fs-sm)',
-          fontWeight: 700,
+          fontWeight: 800,
           color: isImportant ? 'var(--or-700)' : 'var(--text-tertiary)',
           background: 'var(--bg-card)',
           border: `1px solid ${isImportant ? 'var(--or-500)' : 'var(--border-hair)'}`,
@@ -149,6 +150,7 @@ function DropColumn({ colId, label, subtitle, accent, icon, count, children }) {
           padding: '4px 12px',
           minWidth: 32,
           textAlign: 'center',
+          fontVariantNumeric: 'tabular-nums',
         }}>
           {count}
         </span>
@@ -433,7 +435,16 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
           marginBottom: 20,
         }}>
           <div style={{ flex: 1, minWidth: 240 }}>
-            <span className="overline" style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem', letterSpacing: '0.12em' }}>
+            <span
+              style={{
+                display: 'inline-block',
+                color: 'var(--or-500)',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+              }}
+            >
               Étape finale · Menu client
             </span>
             <h1 style={{
@@ -463,107 +474,243 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
           </Button>
         </div>
 
-        {/* ── Bandeau Total LIVE ── */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 12,
-          marginBottom: 24,
-          padding: 'clamp(1rem, 1.5vw, 1.4rem)',
-          background: 'linear-gradient(135deg, #0e0e11 0%, #1c1c22 100%)',
-          borderRadius: 'var(--r-lg)',
-          color: '#f7f4ee',
-          boxShadow: 'var(--shadow-md)',
-        }}>
-          <div>
-            <div className="overline" style={{ color: 'rgba(247,244,238,0.55)', marginBottom: 6 }}>
-              Paiement total estimé
-            </div>
-            <div style={{
-              fontFamily: 'var(--font-display)',
-              fontStyle: 'italic',
-              fontWeight: 600,
-              fontSize: 'clamp(2rem, 3.8vw, 3rem)',
-              lineHeight: 1,
-              letterSpacing: '-0.02em',
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-              {new Money(totalDisplay.valueCents).format()}
-              {totalDisplay.isPeriodic && (
-                <span style={{
+        {/* ── Bandeau Signature · Total LIVE ── */}
+        <div
+          style={{
+            position: 'relative',
+            overflow: 'hidden',
+            marginBottom: 28,
+            padding: 'clamp(1.5rem, 2.2vw, 2.2rem) clamp(1.5rem, 2.5vw, 2.25rem)',
+            background: 'linear-gradient(135deg, #0E0E11 0%, #1C1C22 55%, #0E0E11 100%)',
+            borderRadius: 'var(--r-xl)',
+            border: '1px solid rgba(184,147,90,0.18)',
+            color: '#F7F4EE',
+            boxShadow: '0 30px 70px rgba(0,0,0,0.28)',
+          }}
+        >
+          {/* Halo doré */}
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: '-40%',
+              right: '-10%',
+              width: 480,
+              height: 480,
+              background: 'radial-gradient(circle, rgba(184,147,90,0.22) 0%, transparent 70%)',
+              filter: 'blur(30px)',
+              pointerEvents: 'none',
+            }}
+          />
+          {/* Filet doré signature */}
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: 0, left: 0, right: 0, height: 2,
+              background: 'linear-gradient(90deg, transparent, var(--or-500) 30%, var(--or-500) 70%, transparent)',
+              opacity: 0.8,
+            }}
+          />
+
+          {/* Ligne 1 : client + véhicule */}
+          <div
+            style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+              marginBottom: 18,
+              paddingBottom: 16,
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <CarFront size={18} color="var(--or-500)" />
+              <span
+                style={{
+                  fontFamily: '"Inter", system-ui, -apple-system, sans-serif',
+                  fontWeight: 700,
                   fontSize: 'var(--fs-md)',
-                  color: 'rgba(247,244,238,0.6)',
-                  marginLeft: 8,
-                  fontStyle: 'normal',
-                  fontWeight: 500,
-                }}>
-                  / versement
-                </span>
+                  letterSpacing: '-0.005em',
+                  color: '#fff',
+                }}
+              >
+                {vehicle?.year} {vehicle?.make} {vehicle?.model}
+              </span>
+              {clientName && (
+                <>
+                  <span style={{ color: 'rgba(255,255,255,0.25)' }}>·</span>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontStyle: 'italic',
+                      fontSize: 'var(--fs-md)',
+                      color: 'rgba(255,255,255,0.85)',
+                    }}
+                  >
+                    {clientName}
+                  </span>
+                </>
               )}
             </div>
-            {delta != null && (
-              <div style={{
-                marginTop: 6,
-                fontSize: 'var(--fs-sm)',
-                color: delta > 0 ? 'var(--or-500)' : 'rgba(247,244,238,0.55)',
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                {delta >= 0 ? '+' : ''}
-                {(delta / 100).toFixed(2)} $ vs paiement de base
-              </div>
-            )}
-          </div>
-
-          <div>
-            <div className="overline" style={{ color: 'rgba(247,244,238,0.55)', marginBottom: 6 }}>
-              Produits retenus
-            </div>
-            <div style={{
-              fontFamily: 'var(--font-display)',
-              fontStyle: 'italic',
-              fontWeight: 600,
-              fontSize: '2rem',
-              lineHeight: 1,
-            }}>
-              {importantIds.length}
-              <span style={{
-                fontSize: 'var(--fs-md)',
-                color: 'rgba(247,244,238,0.5)',
-                marginLeft: 6,
-                fontStyle: 'normal',
-                fontWeight: 500,
-              }}>
-                / {products.length}
-              </span>
-            </div>
-          </div>
-
-          <div>
-            <div className="overline" style={{ color: 'rgba(247,244,238,0.55)', marginBottom: 6 }}>
-              Ajouté au financement
-            </div>
-            <div style={{
-              fontFamily: 'var(--font-display)',
-              fontStyle: 'italic',
-              fontWeight: 600,
-              fontSize: '1.75rem',
-              lineHeight: 1,
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-              {new Money(importantAddOnCents).format()}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-            <Button
-              variant="primary"
-              size="md"
-              icon={<Lock size={14} />}
-              onClick={seal}
-              disabled={sealed}
+            <span
+              style={{
+                fontSize: '10.5px',
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                color: 'var(--or-500)',
+                fontWeight: 700,
+              }}
             >
-              {sealed ? 'Choix scellé' : 'Sceller le menu'}
-            </Button>
+              Signature · Avantage Plus
+            </span>
+          </div>
+
+          {/* Ligne 2 : métriques */}
+          <div
+            style={{
+              position: 'relative',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: 20,
+              alignItems: 'flex-end',
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: '11px',
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(247,244,238,0.6)',
+                  fontWeight: 600,
+                  marginBottom: 8,
+                }}
+              >
+                Paiement total estimé
+              </div>
+              <div
+                style={{
+                  fontFamily: '"Inter", system-ui, -apple-system, sans-serif',
+                  fontWeight: 800,
+                  fontSize: 'clamp(2.4rem, 4.2vw, 3.4rem)',
+                  lineHeight: 1,
+                  letterSpacing: '-0.025em',
+                  color: '#fff',
+                  fontVariantNumeric: 'tabular-nums',
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span>{new Money(totalDisplay.valueCents).format()}</span>
+                {totalDisplay.isPeriodic && (
+                  <span style={{
+                    fontSize: '0.38em',
+                    color: 'rgba(247,244,238,0.55)',
+                    fontWeight: 500,
+                    letterSpacing: 0,
+                  }}>
+                    / versement
+                  </span>
+                )}
+              </div>
+              {delta != null && (
+                <div style={{
+                  marginTop: 8,
+                  fontSize: 'var(--fs-sm)',
+                  color: delta > 0 ? 'var(--or-500)' : 'rgba(247,244,238,0.55)',
+                  fontVariantNumeric: 'tabular-nums',
+                  fontWeight: 600,
+                  letterSpacing: '-0.003em',
+                }}>
+                  {delta >= 0 ? '+' : ''}
+                  {(delta / 100).toFixed(2)} $ vs paiement de base
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div
+                style={{
+                  fontSize: '11px',
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(247,244,238,0.6)',
+                  fontWeight: 600,
+                  marginBottom: 8,
+                }}
+              >
+                Produits retenus
+              </div>
+              <div
+                style={{
+                  fontFamily: '"Inter", system-ui, -apple-system, sans-serif',
+                  fontWeight: 800,
+                  fontSize: '2.2rem',
+                  lineHeight: 1,
+                  letterSpacing: '-0.015em',
+                  color: '#fff',
+                  fontVariantNumeric: 'tabular-nums',
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: 6,
+                }}
+              >
+                {importantIds.length}
+                <span style={{
+                  fontSize: '1rem',
+                  color: 'rgba(247,244,238,0.5)',
+                  fontWeight: 500,
+                }}>
+                  / {products.length}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <div
+                style={{
+                  fontSize: '11px',
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(247,244,238,0.6)',
+                  fontWeight: 600,
+                  marginBottom: 8,
+                }}
+              >
+                Ajouté au financement
+              </div>
+              <div
+                style={{
+                  fontFamily: '"Inter", system-ui, -apple-system, sans-serif',
+                  fontWeight: 800,
+                  fontSize: '1.9rem',
+                  lineHeight: 1,
+                  letterSpacing: '-0.015em',
+                  color: '#fff',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {new Money(importantAddOnCents).format()}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+              <Button
+                variant="primary"
+                size="md"
+                icon={<Lock size={14} />}
+                onClick={seal}
+                disabled={sealed}
+              >
+                {sealed ? 'Choix scellé' : 'Sceller le menu'}
+              </Button>
+            </div>
           </div>
         </div>
 

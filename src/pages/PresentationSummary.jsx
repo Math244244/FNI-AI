@@ -6,6 +6,13 @@ import Badge from '../components/ui/Badge';
 import getIcon from '../utils/productIcons';
 import { dateLong } from '../utils/typograph';
 import { getInterest } from '../utils/responseHelpers.js';
+import { usePresentation } from '../context/PresentationContext';
+import { Money } from '../utils/money.js';
+import {
+  sumFinancedAddOnCentsForIds,
+  displayColumnCost,
+  deltaVersusBase,
+} from '../utils/menuCalculations.js';
 
 /**
  * PresentationSummary — écran de fin cérémonial.
@@ -25,6 +32,8 @@ export default function PresentationSummary({
   saving,
   onQuit,
 }) {
+  const { financing, dealerSettingsSnapshot } = usePresentation();
+
   const interested = products.filter((p) => getInterest(responses[p.id]) === 'yes');
   const declined   = products.filter((p) => getInterest(responses[p.id]) === 'no');
   const rate       = products.length
@@ -32,6 +41,17 @@ export default function PresentationSummary({
     : 0;
   const duration = Object.values(timePerProd).reduce((a, b) => a + b, 0);
   const durationLabel = `${Math.floor(duration / 60)} min ${duration % 60}s`;
+
+  // Calculs financiers
+  const interestedIds = interested.map((p) => p.id);
+  const addOnCents = sumFinancedAddOnCentsForIds(
+    interestedIds, products, responses, dealerSettingsSnapshot,
+  );
+  const totalDisplay = displayColumnCost(financing, addOnCents);
+  const delta = deltaVersusBase(financing, addOnCents);
+  const frequencyLabel = financing?.paymentFrequency === 'weekly' ? 'semaine'
+    : financing?.paymentFrequency === 'biweekly' ? '2 semaines'
+    : 'mois';
 
   const [countRate, setCountRate] = useState(0);
   useEffect(() => {
@@ -68,10 +88,10 @@ export default function PresentationSummary({
           background: 'var(--bg-page)',
         }}
       >
-        {/* ─── Gauche 62% — Hero prestige ─── */}
+        {/* ─── Gauche 62% — Hero prestige : véhicule en grand ─── */}
         <aside
           style={{
-            background: 'linear-gradient(155deg, #0E3F2A 0%, var(--forest-600) 55%, #0A4A2E 100%)',
+            background: 'linear-gradient(155deg, #14141A 0%, #1F1F27 50%, #14141A 100%)',
             color: 'var(--ivoire-100)',
             padding: 'clamp(2rem, 4vw, 3.5rem)',
             display: 'flex',
@@ -80,6 +100,22 @@ export default function PresentationSummary({
             overflow: 'hidden',
           }}
         >
+          {/* Halo doré subtil derrière la voiture */}
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '70%',
+              height: '55%',
+              background: 'radial-gradient(ellipse at center, rgba(184,147,90,0.18) 0%, transparent 70%)',
+              filter: 'blur(20px)',
+              pointerEvents: 'none',
+            }}
+          />
+
           <div
             style={{
               position: 'relative',
@@ -93,9 +129,10 @@ export default function PresentationSummary({
             <span
               className="overline"
               style={{
-                color: 'rgba(255,255,255,0.65)',
-                marginBottom: '0.75rem',
-                letterSpacing: '0.14em',
+                color: 'var(--or-500)',
+                marginBottom: '0.5rem',
+                letterSpacing: '0.18em',
+                fontWeight: 700,
               }}
             >
               Présentation complétée
@@ -115,12 +152,12 @@ export default function PresentationSummary({
               {clientName ? <>Merci, {clientName}.</> : 'Merci de votre temps.'}
             </h1>
 
-            {/* Véhicule GRAND, aucun watermark ─────────────────────── */}
+            {/* Véhicule EN TRÈS GRAND ─────────────────────── */}
             <div
               style={{
                 flex: 1,
                 minHeight: 0,
-                margin: '1.75rem 0 1.25rem',
+                margin: '1.5rem 0 1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -132,9 +169,9 @@ export default function PresentationSummary({
                   style={{
                     width: '100%',
                     height: '100%',
-                    maxWidth: 920,
-                    maxHeight: 'clamp(320px, 42vh, 520px)',
-                    filter: 'drop-shadow(0 36px 60px rgba(0,0,0,0.45))',
+                    maxWidth: 980,
+                    maxHeight: 'clamp(360px, 48vh, 560px)',
+                    filter: 'drop-shadow(0 40px 70px rgba(0,0,0,0.55))',
                     animation: 'summary-zoom 1000ms var(--ease-out) both',
                   }}
                 >
@@ -151,15 +188,15 @@ export default function PresentationSummary({
               )}
             </div>
 
-            {/* Chiffre hero + wording protection (pas "vente") ─────── */}
+            {/* Indicateur de protection, clair et lisible ─────── */}
             <div
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'auto 1fr',
+                display: 'flex',
                 alignItems: 'center',
-                gap: 24,
+                gap: 28,
                 marginTop: 'auto',
                 paddingTop: '1rem',
+                flexWrap: 'wrap',
                 animation: 'summary-fade 700ms 400ms var(--ease-out) both',
               }}
             >
@@ -167,12 +204,11 @@ export default function PresentationSummary({
                 style={{
                   display: 'flex',
                   alignItems: 'baseline',
-                  fontFamily: 'var(--font-display)',
-                  fontStyle: 'italic',
-                  fontWeight: 600,
-                  fontSize: 'clamp(5rem, 10vw, 8.5rem)',
+                  fontFamily: '"Inter", system-ui, -apple-system, sans-serif',
+                  fontWeight: 800,
+                  fontSize: 'clamp(4.5rem, 9vw, 7.5rem)',
                   lineHeight: 1,
-                  letterSpacing: '-0.045em',
+                  letterSpacing: '-0.04em',
                   color: '#fff',
                   fontVariantNumeric: 'tabular-nums',
                 }}
@@ -183,24 +219,25 @@ export default function PresentationSummary({
                     fontSize: '0.45em',
                     marginLeft: '0.08em',
                     color: 'var(--or-500)',
+                    fontWeight: 600,
                   }}
                 >
                   %
                 </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 240 }}>
                 <div
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 10,
                     fontSize: 'clamp(1.1rem, 1.35vw, 1.35rem)',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     color: '#fff',
                     letterSpacing: '-0.005em',
                   }}
                 >
-                  <ShieldCheck size={18} color="var(--or-500)" />
+                  <ShieldCheck size={20} color="var(--or-500)" />
                   {protectionLabel}
                 </div>
                 <span
@@ -372,6 +409,11 @@ export default function PresentationSummary({
         rate={rate}
         protectionLabel={protectionLabel}
         durationLabel={durationLabel}
+        financing={financing}
+        addOnCents={addOnCents}
+        totalDisplay={totalDisplay}
+        delta={delta}
+        frequencyLabel={frequencyLabel}
       />
     </>
   );
@@ -388,7 +430,19 @@ function PrintableSummary({
   rate,
   protectionLabel,
   durationLabel,
+  financing,
+  addOnCents,
+  totalDisplay,
+  delta,
+  frequencyLabel,
 }) {
+  const transType = financing?.transactionType || 'financement';
+  const isLease   = transType === 'location';
+  const isCash    = transType === 'comptant';
+  const isLoan    = transType === 'financement';
+  const transLabel = isLease ? 'Location' : isCash ? 'Comptant' : 'Financement';
+  const fmt = (c) => (c != null ? new Money(c).format() : '—');
+
   return (
     <div
       className="print-summary print-only"
@@ -495,6 +549,122 @@ function PrintableSummary({
         </div>
       </div>
 
+      {/* Détails financiers */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ ...PRINT_SECTION_H, color: '#1a1a1a' }}>
+          Détails financiers · {transLabel}
+        </div>
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: '10.5pt',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          <tbody>
+            {!isCash && (
+              <>
+                <tr style={PRINT_TR}>
+                  <td style={PRINT_TD_LABEL}>Capital {isLease ? 'loué' : 'financé'}</td>
+                  <td style={PRINT_TD_VAL}>
+                    {financing?.capitalDollars != null
+                      ? `${financing.capitalDollars.toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`
+                      : '—'}
+                  </td>
+                </tr>
+                {isLease && financing?.residualDollars != null && (
+                  <tr style={PRINT_TR}>
+                    <td style={PRINT_TD_LABEL}>Valeur résiduelle</td>
+                    <td style={PRINT_TD_VAL}>
+                      {financing.residualDollars.toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $
+                    </td>
+                  </tr>
+                )}
+                <tr style={PRINT_TR}>
+                  <td style={PRINT_TD_LABEL}>Durée</td>
+                  <td style={PRINT_TD_VAL}>{financing?.termMonths || '—'} mois</td>
+                </tr>
+                <tr style={PRINT_TR}>
+                  <td style={PRINT_TD_LABEL}>Taux {isLease ? 'de location' : 'd\'intérêt'} annuel</td>
+                  <td style={PRINT_TD_VAL}>
+                    {financing?.interestRate != null ? `${financing.interestRate} %` : '—'}
+                  </td>
+                </tr>
+                <tr style={PRINT_TR}>
+                  <td style={PRINT_TD_LABEL}>Fréquence</td>
+                  <td style={PRINT_TD_VAL}>
+                    {financing?.paymentFrequency === 'weekly' ? 'Hebdomadaire'
+                      : financing?.paymentFrequency === 'biweekly' ? 'Aux 2 semaines'
+                      : 'Mensuelle'}
+                  </td>
+                </tr>
+                <tr style={PRINT_TR}>
+                  <td style={PRINT_TD_LABEL}>Versement de base</td>
+                  <td style={PRINT_TD_VAL}>{fmt(financing?.basePaymentCents)}</td>
+                </tr>
+              </>
+            )}
+            {isCash && financing?.totalDueCents != null && (
+              <tr style={PRINT_TR}>
+                <td style={PRINT_TD_LABEL}>Montant total du véhicule</td>
+                <td style={PRINT_TD_VAL}>{fmt(financing.totalDueCents)}</td>
+              </tr>
+            )}
+            <tr style={PRINT_TR}>
+              <td style={PRINT_TD_LABEL}>Protections retenues ({interested.length})</td>
+              <td style={PRINT_TD_VAL}>{fmt(addOnCents)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Bloc total — mis en valeur */}
+        <div
+          style={{
+            marginTop: 10,
+            padding: '10px 14px',
+            background: '#fafaf7',
+            border: '1.5px solid #8a6a33',
+            borderRadius: 6,
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <div>
+            <div style={{ ...PRINT_LABEL, color: '#8a6a33' }}>
+              {isCash
+                ? 'Total à payer (incl. protections)'
+                : isLoan
+                  ? `Nouveau versement aux ${frequencyLabel}`
+                  : `Nouveau versement aux ${frequencyLabel}`}
+            </div>
+            {!isCash && delta != null && (
+              <div style={{ fontSize: '9pt', color: '#555', marginTop: 2 }}>
+                {delta >= 0 ? '+' : ''}{(delta / 100).toFixed(2)} $ vs versement de base
+              </div>
+            )}
+          </div>
+          <div
+            style={{
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontWeight: 800,
+              fontSize: '20pt',
+              color: '#1a1a1a',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            {fmt(totalDisplay?.valueCents)}
+            {totalDisplay?.isPeriodic && (
+              <span style={{ fontSize: '10pt', color: '#555', fontWeight: 500, marginLeft: 4 }}>
+                /vers.
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Liste importants */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ ...PRINT_SECTION_H, color: '#0A4A2E' }}>
@@ -584,6 +754,24 @@ const PRINT_EMPTY = {
   fontStyle: 'italic',
   color: '#777',
   padding: '4px 0',
+};
+const PRINT_TR = {
+  borderBottom: '1px solid #eee',
+};
+const PRINT_TD_LABEL = {
+  padding: '6px 8px 6px 0',
+  fontSize: '10pt',
+  color: '#555',
+  fontWeight: 500,
+  width: '60%',
+};
+const PRINT_TD_VAL = {
+  padding: '6px 0',
+  fontSize: '10.5pt',
+  fontWeight: 700,
+  color: '#1a1a1a',
+  textAlign: 'right',
+  fontVariantNumeric: 'tabular-nums',
 };
 
 /* ─────────────────────────────────────────────────────────────── */
