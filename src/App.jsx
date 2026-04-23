@@ -13,6 +13,7 @@ const Login            = lazy(() => import('./pages/Login'));
 const Dashboard        = lazy(() => import('./pages/Dashboard'));
 const VehicleSelection = lazy(() => import('./pages/VehicleSelection'));
 const SlideDeck        = lazy(() => import('./pages/SlideDeck'));
+const PresentationStart = lazy(() => import('./pages/PresentationStart'));
 const Settings         = lazy(() => import('./pages/Settings'));
 const Reports          = lazy(() => import('./pages/Reports'));
 const NotFound         = lazy(() => import('./pages/NotFound'));
@@ -105,6 +106,7 @@ function AppRoutes() {
             {/* Protected seller/dealer routes */}
             <Route path="/dashboard"       element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/select-vehicle"  element={<ProtectedRoute><VehicleSelection /></ProtectedRoute>} />
+            <Route path="/presentation/start" element={<ProtectedRoute><PresentationStart /></ProtectedRoute>} />
             <Route path="/presentation"    element={<ProtectedRoute><SlideDeck /></ProtectedRoute>} />
             <Route path="/settings"        element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/reports"         element={<ProtectedRoute><Reports /></ProtectedRoute>} />

@@ -183,6 +183,7 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
     vehicle,
     clientName,
     dealerSettingsSnapshot,
+    excludedProductIds,
   } = usePresentation();
   const timePerProduct = timePerProductProp;
 
@@ -209,15 +210,23 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
   const [activeDragId, setActiveDragId] = useState(/** @type {string|null} */ (null));
 
   // Catalogue fusionné (incluant custom dealer) si disponible, sinon ENRICHED_PRODUCTS
+  // Les produits retirés depuis la page de démarrage sont exclus.
+  const excludedSet = useMemo(
+    () => new Set(excludedProductIds || []),
+    [excludedProductIds],
+  );
   const allProducts = useMemo(() => {
+    let list;
     if (dealerSettingsSnapshot) {
       const merged = buildMergedProductListFromSettings(dealerSettingsSnapshot, PRODUCTS)
         .filter((p) => p.active !== false)
         .map((p) => enrichProductWithPricing(p));
-      if (merged.length) return merged;
+      list = merged.length ? merged : ENRICHED_PRODUCTS;
+    } else {
+      list = ENRICHED_PRODUCTS;
     }
-    return ENRICHED_PRODUCTS;
-  }, [dealerSettingsSnapshot]);
+    return list.filter((p) => !excludedSet.has(p.id));
+  }, [dealerSettingsSnapshot, excludedSet]);
 
   const products = useMemo(
     () => allProducts.filter((p) => getInterest(responses[p.id]) != null),

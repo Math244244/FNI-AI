@@ -280,7 +280,7 @@ export default function VehicleSelection() {
     setCondition(condition);
     setTransactionType(transType);
     startSession(vehicleData);
-    navigate('/presentation');
+    navigate('/presentation/start');
   };
 
   const years = getYears(category);

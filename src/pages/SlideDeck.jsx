@@ -36,11 +36,19 @@ export default function SlideDeck() {
   const navigate = useNavigate();
   const {
     vehicle, clientName, transactionType, clearSession, mode, financing, responses, setResponses,
-    dealerSettingsSnapshot, setDealerSettingsSnapshot, updateResponse,
+    dealerSettingsSnapshot, setDealerSettingsSnapshot, updateResponse, excludedProductIds,
   } = usePresentation();
   const { currentUser, userProfile, isDemo } = useAuth();
 
-  const [products, setProducts] = useState(ENRICHED_PRODUCTS);
+  const [allProducts, setAllProducts] = useState(ENRICHED_PRODUCTS);
+  const excludedSet = useMemo(
+    () => new Set(excludedProductIds || []),
+    [excludedProductIds],
+  );
+  const products = useMemo(
+    () => allProducts.filter((p) => !excludedSet.has(p.id)),
+    [allProducts, excludedSet],
+  );
   const [index, setIndex] = useState(0);
   const [activeHot, setActiveHot] = useState(null);
   const [saving, setSaving]       = useState(false);
@@ -68,7 +76,7 @@ export default function SlideDeck() {
     (async () => {
       if (!userProfile?.dealerId) {
         // Démo / pas de dealer : utiliser le catalogue de base enrichi
-        setProducts(ENRICHED_PRODUCTS);
+        setAllProducts(ENRICHED_PRODUCTS);
         return;
       }
       const s = await loadDealerSettings(userProfile.dealerId);
@@ -78,7 +86,7 @@ export default function SlideDeck() {
       const merged = buildMergedProductListFromSettings(s, PRODUCTS)
         .filter((p) => p.active !== false)
         .map((p) => enrichProductWithPricing(p));
-      if (merged.length) setProducts(merged);
+      if (merged.length) setAllProducts(merged);
     })();
   }, [userProfile?.dealerId, setDealerSettingsSnapshot]);
 

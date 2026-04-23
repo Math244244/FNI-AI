@@ -17,6 +17,8 @@ export function PresentationProvider({ children }) {
   const [responses, setResponses]   = useState(emptyResponses);
   const [menuState, setMenuState]     = useState(null);
   const [dealerSettingsSnapshot, setDealerSettingsSnapshot] = useState(null);
+  /** Produits retirés de la présentation en cours (déjà vendus / non pertinents). */
+  const [excludedProductIds, setExcludedProductIds] = useState(/** @type {string[]} */ ([]));
 
   const setVehicle = useCallback((v) => setVehicleState(v), []);
 
@@ -25,6 +27,15 @@ export function PresentationProvider({ children }) {
     if (vehicleData) setVehicleState(vehicleData);
     setResponses(emptyResponses());
     setMenuState(null);
+    setExcludedProductIds([]);
+  }, []);
+
+  const toggleExcludedProduct = useCallback((productId) => {
+    setExcludedProductIds((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId],
+    );
   }, []);
 
   const clearSession = useCallback(() => {
@@ -38,6 +49,7 @@ export function PresentationProvider({ children }) {
     setResponses(emptyResponses());
     setMenuState(null);
     setDealerSettingsSnapshot(null);
+    setExcludedProductIds([]);
   }, []);
 
   const updateResponse = useCallback((productId, patch) => {
@@ -73,6 +85,9 @@ export function PresentationProvider({ children }) {
         setMenuState,
         dealerSettingsSnapshot,
         setDealerSettingsSnapshot,
+        excludedProductIds,
+        setExcludedProductIds,
+        toggleExcludedProduct,
       }}
     >
       {children}
