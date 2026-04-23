@@ -1167,3 +1167,13 @@ input, select, textarea {
 [data-theme='dark'] .watermark {
   color: rgba(247,244,238,0.04);
 }
+
+/* Menu selling — cartes DnD */
+@media (hover: hover) {
+  .menu-dnd-card:not(:active) {
+    transition: box-shadow 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+  }
+  .menu-dnd-card:hover {
+    border-color: var(--or-300) !important;
+  }
+}

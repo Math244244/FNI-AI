@@ -17,7 +17,7 @@ import {
 import { updatePresentation, publishPublicSnapshot } from '../services/presentationService';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
-import { ArrowLeft, Check, Link2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, Link2, Sparkles, Copy, CarFront } from 'lucide-react';
 import { Money } from '../utils/money.js';
 
 const COLS = /** @type {const} */ (['essentiel', 'recommande', 'premium', 'rejet']);
@@ -33,6 +33,7 @@ function DraggableCard({ id, children, disabled }) {
   return (
     <div
       ref={setNodeRef}
+      className="menu-dnd-card"
       {...attributes}
       {...listeners}
       style={{
@@ -44,7 +45,9 @@ function DraggableCard({ id, children, disabled }) {
         fontWeight: 500,
         marginBottom: 6,
         cursor: disabled ? 'default' : 'grab',
-        opacity: isDragging ? 0.6 : 1,
+        opacity: isDragging ? 0.5 : 1,
+        transform: isDragging ? 'scale(1.02)' : 'none',
+        boxShadow: isDragging ? '0 8px 28px rgba(0,0,0,0.12)' : 'none',
         touchAction: 'none',
       }}
     >
@@ -108,7 +111,7 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
   const [placements, setPlacements] = useState(
     () => menuState?.placements || defaultPlacementsFromResponses(responses),
   );
-  const [choice, setChoice]     = useState(/** @type {'recommande'|null} */ (null));
+  const [choice, setChoice]     = useState(/** @type {'essentiel'|'recommande'|'premium'|null} */ (null));
   const [publishing, setPub]  = useState(false);
   const [shareUrl, setShareUrl] = useState(/** @type {string|null} */ (null));
   const [sealed, setSealed]     = useState(false);
@@ -171,6 +174,9 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
       } catch (e) { console.error(e); }
     }
     onComplete?.(menuFinal);
+    if (onComplete == null) {
+      navigate('/dashboard', { replace: true });
+    }
   };
 
   const back = onBack || (() => {
@@ -202,8 +208,55 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
     } finally { setPub(false); }
   };
 
+  if (products.length === 0) {
+    return (
+      <div
+        className="animate-in"
+        style={{
+          minHeight:      '100vh',
+          display:        'flex',
+          flexDirection:  'column',
+          alignItems:     'center',
+          justifyContent: 'center',
+          background:     'var(--bg-page)',
+          padding:        '2rem',
+          textAlign:      'center',
+          gap:            '1.25rem',
+        }}
+      >
+        <CarFront size={40} color="var(--or-500)" strokeWidth={1.2} style={{ opacity: 0.85 }} />
+        <h1
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontStyle:  'italic',
+            fontSize:   '1.4rem',
+            fontWeight: 500,
+            margin:     0,
+            maxWidth:   400,
+            lineHeight: 1.35,
+          }}
+        >
+          Aucune présentation en cours
+        </h1>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', maxWidth: 400, margin: 0 }}>
+          Lancez d’abord une présentation depuis le tableau de bord, ou complétez le parcours véhicule et slides
+          pour alimenter le menu.
+        </p>
+        <Button variant="primary" onClick={() => navigate('/select-vehicle')}>
+          Choisir un véhicule
+        </Button>
+        <Button variant="ghost" onClick={() => navigate('/dashboard')}>
+          Tableau de bord
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-page)', padding: '1.5rem' }}>
+    <div
+      className="animate-in"
+      style={{ minHeight: '100vh', background: 'var(--bg-page)', padding: '1.5rem' }}
+    >
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
@@ -269,13 +322,12 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
                   fontFamily: 'var(--font-display)',
                   fontSize:  '1.4rem',
                   fontWeight: 600,
+                  fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                {d.isPeriodic
-                  ? new Money(d.valueCents).format()
-                  : new Money(d.valueCents).format()}
+                {new Money(d.valueCents).format()}
                 {d.isPeriodic && (
-                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-tertiary)' }}> / terme</span>
+                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-tertiary)' }}> / versement</span>
                 )}
               </div>
             </div>
@@ -342,9 +394,20 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
             {publishing ? 'Lien…' : 'Générer un lien de partage'}
           </Button>
           {shareUrl && (
-            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--forest-600)', wordBreak: 'break-all' }}>
-              {shareUrl}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--forest-600)', wordBreak: 'break-all', flex: 1, minWidth: 0 }}>
+                {shareUrl}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                type="button"
+                icon={<Copy size={14} />}
+                onClick={() => { void navigator.clipboard.writeText(shareUrl); }}
+              >
+                Copier
+              </Button>
+            </div>
           )}
         </div>
 

@@ -1,7 +1,28 @@
-.env.local
+# Dépendances & build
+node_modules
+dist
+dist-ssr
+*.local
+
+# Env & secrets
 .env
-node_modules/
-dist/
+.env.*
+!.env.example
+
+# Logs & cache
+npm-debug.log*
 .DS_Store
-*.log
-.firebase/
+.cache
+.vite
+
+# Outils
+coverage
+*.tsbuildinfo
+
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Firebase (cache local, pas les règles)
+.firebase
