@@ -94,9 +94,11 @@ export default function Select({
           </RSelect.ScrollUpButton>
 
           <RSelect.Viewport style={{ padding: 4 }}>
-            {items.map((it) => (
+            {items
+              .filter((it) => it != null && it.value !== '' && it.value !== null && it.value !== undefined)
+              .map((it) => (
               <RSelect.Item
-                key={it.value}
+                key={String(it.value)}
                 value={String(it.value)}
                 disabled={it.disabled}
                 style={{

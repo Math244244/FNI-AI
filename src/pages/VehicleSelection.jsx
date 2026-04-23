@@ -202,8 +202,9 @@ export default function VehicleSelection() {
   const yearItems = useMemo(() => years.map((y) => ({ value: String(y), label: String(y) })), [years]);
   const makeItems = useMemo(() => makes.map((m) => ({ value: m, label: m })), [makes]);
   const modelItems = useMemo(() => models.map((m) => ({ value: m, label: m })), [models]);
+  const NONE = '__none__';
   const colorItems = useMemo(() => [
-    { value: '', label: '— Aucune —' },
+    { value: NONE, label: '— Aucune —' },
     ...VEHICLE_COLORS.map((c) => ({ value: c, label: c })),
   ], []);
 
@@ -451,8 +452,8 @@ export default function VehicleSelection() {
                       Couleur <span style={{ opacity: 0.5, fontWeight: 400 }}>(optionnel)</span>
                     </label>
                     <Select
-                      value={color}
-                      onValueChange={(v) => setColor(v === '' ? '' : v)}
+                      value={color === '' ? NONE : color}
+                      onValueChange={(v) => setColor(v === NONE ? '' : v)}
                       placeholder="— Sélectionner —"
                       items={colorItems}
                       ariaLabel="Couleur"
