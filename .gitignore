@@ -1,4 +1,5 @@
 # Dépendances & build
+.commit-msg.tmp
 node_modules
 dist
 dist-ssr
