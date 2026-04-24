@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { getUserStats, getUserPresentations } from '../services/presentationService';
 import {
-  BarChart2, Play, Send, Settings, LogOut,
+  BarChart2, Play, Send, Settings, LogOut, Car,
   TrendingUp, FileText, Shield, ArrowRight, User, Sparkles, Moon, Sun,
 } from 'lucide-react';
 
@@ -85,8 +85,8 @@ export default function Dashboard() {
       {/* Main */}
       <main className="main-content">
         {/* Header éditorial */}
-        <div style={{ marginBottom: '2.5rem' }} className="animate-up">
-          <span className="overline">
+        <div style={{ marginBottom: '2rem' }} className="animate-up">
+          <span className="overline dashboard-date">
             {new Date().toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long' })}
           </span>
           <h1 className="display-italic" style={{
@@ -106,6 +106,19 @@ export default function Dashboard() {
           </p>
         </div>
 
+        {/* Bannière premium (alignée sur l’ancienne ref. visuelle) */}
+        <div className="dashboard-hero animate-up">
+          <div className="dashboard-hero__glow" aria-hidden />
+          <div className="dashboard-hero__content">
+            <div className="dashboard-hero__icon-wrap" aria-hidden>
+              <Car className="dashboard-hero__car" strokeWidth={1.1} size={48} />
+            </div>
+            <p className="dashboard-hero__title">
+              Chaque présentation mérite le traitement <em>premium</em>.
+            </p>
+          </div>
+        </div>
+
         {/* KPI row */}
         {!isDemo && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: '1rem', marginBottom: '2.5rem' }} className="animate-up stagger">
@@ -115,55 +128,58 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Action cards */}
-        <div style={{ marginBottom: '2rem' }}>
+        {/* Présentation : cartes premium centrées */}
+        <div className="dashboard-presentation animate-up stagger">
           <div className="section-label">Nouvelle présentation</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', maxWidth: '800px' }} className="animate-up stagger">
-            {/* Live */}
-            <div
-              className="card-action"
+          <div className="dashboard-action-grid">
+            <button
+              type="button"
+              className="dashboard-action-card dashboard-action-card--live"
               onClick={() => navigate('/select-vehicle')}
             >
-              <div style={{
-                width: 52, height: 52, borderRadius: '14px',
-                background: 'var(--brand-red-light)',
-                border: '1px solid var(--brand-red-border)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginBottom: '1rem',
-              }}>
-                <Play size={24} color="var(--brand-red)" />
+              <span className="dashboard-action-card__sheen" aria-hidden />
+              <span className="dashboard-action-card__badge" aria-hidden>Recommandé</span>
+              <span className="dashboard-action-card__bg-icon" aria-hidden>
+                <Play size={120} strokeWidth={1.2} />
+              </span>
+              <div className="dashboard-action-card__body">
+                <span className="dashboard-action-card__kicker">Temps réel · en concession</span>
+                <div className="dashboard-action-card__icon-box">
+                  <Play size={24} strokeWidth={2.2} />
+                </div>
+                <h2 className="dashboard-action-card__h">Présentation Live</h2>
+                <p className="dashboard-action-card__desc">
+                  Pilotez la présentation au rythme du client avec l’écran miroir synchronisé.
+                </p>
+                <span className="dashboard-action-card__cta">
+                  Démarrer <ArrowRight size={16} strokeWidth={2.5} />
+                </span>
               </div>
-              <h3 style={{ marginBottom: '0.35rem' }}>Présentation Live</h3>
-              <p style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                Présentez en temps réel avec votre client en concession
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--brand-red)', fontSize: '0.8125rem', fontWeight: 700 }}>
-                Démarrer <ArrowRight size={14} />
-              </div>
-            </div>
+            </button>
 
-            {/* Remote */}
-            <div
-              className="card-action"
+            <button
+              type="button"
+              className="dashboard-action-card dashboard-action-card--remote"
               onClick={() => navigate('/select-vehicle?mode=remote')}
             >
-              <div style={{
-                width: 52, height: 52, borderRadius: '14px',
-                background: 'var(--info-light)',
-                border: '1px solid var(--info-border)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginBottom: '1rem',
-              }}>
-                <Send size={24} color="var(--info)" />
+              <span className="dashboard-action-card__sheen" aria-hidden />
+              <span className="dashboard-action-card__bg-icon" aria-hidden>
+                <Send size={120} strokeWidth={1.2} />
+              </span>
+              <div className="dashboard-action-card__body">
+                <span className="dashboard-action-card__kicker">Présentation synchronisée</span>
+                <div className="dashboard-action-card__icon-box">
+                  <Send size={24} />
+                </div>
+                <h2 className="dashboard-action-card__h">Envoi à distance</h2>
+                <p className="dashboard-action-card__desc">
+                  Générez un lien ou un QR. Votre client suit la même présentation en temps réel depuis son téléphone.
+                </p>
+                <span className="dashboard-action-card__cta">
+                  Préparer <ArrowRight size={16} strokeWidth={2.5} />
+                </span>
               </div>
-              <h3 style={{ marginBottom: '0.35rem' }}>Envoi à Distance</h3>
-              <p style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                Générez un lien pour que le client complète à son rythme
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--info)', fontSize: '0.8125rem', fontWeight: 700 }}>
-                Préparer <ArrowRight size={14} />
-              </div>
-            </div>
+            </button>
           </div>
         </div>
 
