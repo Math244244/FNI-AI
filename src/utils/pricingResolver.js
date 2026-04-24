@@ -5,15 +5,37 @@ import { ENRICHED_PRODUCTS, enrichProductWithPricing } from '../data/productPric
  */
 
 /**
+ * Retourne la grille tarifaire à utiliser : celle de la catégorie si
+ * le doc est en v2 (`byCategory.xxx.pricing`), sinon la grille plate
+ * legacy (`.pricing`). Null si aucune disponible.
+ * @param {object|null|undefined} dealerSettings
+ * @param {string|null|undefined} categoryKey
+ */
+function resolvePricingMap(dealerSettings, categoryKey) {
+  if (!dealerSettings || typeof dealerSettings !== 'object') return null;
+  if (categoryKey) {
+    const c = String(categoryKey).toLowerCase().trim();
+    const key = c === 'loisir' ? 'loisirs' : c;
+    const cat = dealerSettings.byCategory && dealerSettings.byCategory[key];
+    if (cat?.pricing && typeof cat.pricing === 'object') return cat.pricing;
+  }
+  return dealerSettings.pricing && typeof dealerSettings.pricing === 'object'
+    ? dealerSettings.pricing
+    : null;
+}
+
+/**
  * Résout le prix en cents pour un produit (catalogue + surcharge concession).
  * @param {object} product — produit enrichi ou de base
  * @param {object} [dealerSettings] — doc dealerSettings
  * @param {string} [tierId] — ex. ext_4y
  * @param {string} [groupId] — ex. mfg | ext
+ * @param {string} [categoryKey] — automobile | loisirs | vr (v2)
  */
-export function resolvePriceCents(product, dealerSettings, tierId, groupId) {
+export function resolvePriceCents(product, dealerSettings, tierId, groupId, categoryKey) {
   const id = product.id;
-  const dealer = dealerSettings?.pricing?.[id];
+  const pricingMap = resolvePricingMap(dealerSettings, categoryKey);
+  const dealer = pricingMap?.[id];
 
   if (product.pricingMode === 'tiers' && tierId) {
     const gId = groupId || findGroupIdForTier(product, tierId);
@@ -52,9 +74,11 @@ export function getEnrichedById(productId) {
  * Produit personnalisé (non catalogue) : prix seulement côté dealer.
  * @param {object} product
  * @param {object} [dealerSettings]
+ * @param {string} [categoryKey]
  */
-export function resolveCustomProductPriceCents(product, dealerSettings) {
-  const d = dealerSettings?.pricing?.[product.id];
+export function resolveCustomProductPriceCents(product, dealerSettings, categoryKey) {
+  const map = resolvePricingMap(dealerSettings, categoryKey);
+  const d = map?.[product.id];
   if (d?.defaultPriceCents != null) return Math.round(d.defaultPriceCents);
   if (product.defaultPriceCents != null) return Math.round(product.defaultPriceCents);
   return 0;

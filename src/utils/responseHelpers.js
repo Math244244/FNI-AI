@@ -22,7 +22,7 @@ export function isMaybe(r) { return getInterest(r) === 'maybe'; }
  * @param {'yes'|'no'|'maybe'} interest
  * @param {{ pricing?: object }|null} dealerSettingsWrapper — { pricing } comme dealerSettings
  */
-export function buildResponseV2Entry(prev, product, interest, dealerSettingsWrapper) {
+export function buildResponseV2Entry(prev, product, interest, dealerSettingsWrapper, categoryKey) {
   const base = typeof prev === 'string' ? { interest: prev } : { ...(prev || {}) };
   const next = { ...base, interest };
   if (product?.pricingMode === 'tiers' && !base.tierId) {
@@ -30,7 +30,7 @@ export function buildResponseV2Entry(prev, product, interest, dealerSettingsWrap
     const tid = e?.defaultTierId;
     if (tid) {
       next.tierId = tid;
-      next.priceCents = resolvePriceCents(e, dealerSettingsWrapper, tid, null);
+      next.priceCents = resolvePriceCents(e, dealerSettingsWrapper, tid, null, categoryKey);
     }
   }
   return next;

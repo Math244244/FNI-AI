@@ -94,7 +94,7 @@ export default function Takeaway() {
   const importantProducts = products.filter((p) => placements[p.id] === 'important');
   const rejectedProducts = products.filter((p) => placements[p.id] !== 'important');
 
-  const addOnCents = sumFinancedAddOnCentsForIds(importantIds, products, responses, ds);
+  const addOnCents = sumFinancedAddOnCentsForIds(importantIds, products, responses, ds, vehicle?.category);
   const d = displayColumnCost(financing, addOnCents);
 
   return (
@@ -157,6 +157,7 @@ export default function Takeaway() {
             items={importantProducts}
             responses={responses}
             ds={ds}
+            categoryKey={vehicle?.category}
           />
           <Column
             icon={<MinusCircle size={16} color="var(--text-tertiary)" />}
@@ -164,6 +165,7 @@ export default function Takeaway() {
             items={rejectedProducts}
             responses={responses}
             ds={ds}
+            categoryKey={vehicle?.category}
             dim
           />
         </div>
@@ -182,7 +184,7 @@ export default function Takeaway() {
   );
 }
 
-function Column({ icon, title, items, responses, ds, dim }) {
+function Column({ icon, title, items, responses, ds, dim, categoryKey }) {
   return (
     <div style={{
       border: '1px solid var(--border-hair)',
@@ -216,7 +218,7 @@ function Column({ icon, title, items, responses, ds, dim }) {
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {items.map((p) => {
-            const unit = productFinancedValueCents(p, responses?.[p.id], ds);
+            const unit = productFinancedValueCents(p, responses?.[p.id], ds, undefined, categoryKey);
             return (
               <li
                 key={p.id}

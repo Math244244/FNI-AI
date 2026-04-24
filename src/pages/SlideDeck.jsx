@@ -80,7 +80,7 @@ export default function SlideDeck() {
         const s = await loadDealerSettings(userProfile.dealerId);
         if (cancelled) return;
         setDealerSettingsSnapshot(s);
-        const merged = buildMergedProductListFromSettings(s, PRODUCTS)
+        const merged = buildMergedProductListFromSettings(s, PRODUCTS, vehicle?.category)
           .filter((p) => p.active !== false)
           .map((p) => enrichProductWithPricing(p));
         if (!cancelled && merged.length) setAllProducts(merged);
@@ -90,7 +90,7 @@ export default function SlideDeck() {
       }
     })();
     return () => { cancelled = true; };
-  }, [userProfile?.dealerId, setDealerSettingsSnapshot]);
+  }, [userProfile?.dealerId, vehicle?.category, setDealerSettingsSnapshot]);
 
   /* ── Timer slide ── */
   useEffect(() => {
@@ -145,7 +145,7 @@ export default function SlideDeck() {
     saveSlideTime();
     setResponses((prev) => {
       const prevR   = prev[product.id];
-      const entry   = buildResponseV2Entry(prevR, product, resp, dealerSettingsSnapshot);
+      const entry   = buildResponseV2Entry(prevR, product, resp, dealerSettingsSnapshot, vehicle?.category);
       const newResponses = { ...prev, [product.id]: entry };
 
       if (!isDemo && currentUser) {
@@ -591,10 +591,11 @@ export default function SlideDeck() {
             <TierSelector
               product={product}
               dealerSettings={dealerSettingsSnapshot}
+              categoryKey={vehicle?.category}
               tierId={tierIdFromResp}
               onChange={(tid, gId) => {
                 const e = getEnrichedById(product.id) || product;
-                const pc = resolvePriceCents(e, dealerSettingsSnapshot, tid, gId);
+                const pc = resolvePriceCents(e, dealerSettingsSnapshot, tid, gId, vehicle?.category);
                 updateResponse(product.id, { tierId: tid, priceCents: pc });
               }}
             />

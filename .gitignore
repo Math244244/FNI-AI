@@ -27,3 +27,5 @@ coverage
 
 # Firebase (cache local, pas les règles)
 .firebase
+
+.commit_msg.txt

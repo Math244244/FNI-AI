@@ -1,6 +1,30 @@
 import { PRODUCTS } from '../data/products';
 
-export const DEALER_SETTINGS_VERSION = 1;
+export const DEALER_SETTINGS_VERSION = 2;
+
+/* ─────────────────────────────────────────────────────────────
+   Catégories : chaque dealer configure indépendamment ses
+   produits / prix / overrides par catégorie de véhicule.
+   ───────────────────────────────────────────────────────────── */
+export const CATEGORY_KEYS = ['automobile', 'loisirs', 'vr'];
+export const CATEGORY_LABELS = {
+  automobile: 'Automobile',
+  loisirs: 'Loisirs',
+  vr: 'VR',
+};
+
+/**
+ * Normalise une clé de catégorie (accepte 'loisir' singulier, casse variable, etc.)
+ * @param {unknown} cat
+ * @returns {'automobile'|'loisirs'|'vr'}
+ */
+export function normalizeCategoryKey(cat) {
+  if (!cat) return 'automobile';
+  const c = String(cat).toLowerCase().trim();
+  if (c === 'loisir') return 'loisirs';
+  if (CATEGORY_KEYS.includes(/** @type {any} */(c))) return /** @type {any} */(c);
+  return 'automobile';
+}
 
 /** @param {unknown} a @param {unknown} b */
 export function deepEqual(a, b) {
@@ -79,52 +103,91 @@ export function buildCatalogOverridesMap(productRows, catalog = PRODUCTS) {
 }
 
 /**
+ * Retourne la tranche de settings (order/disabled/customs/overrides/pricing)
+ * pour la catégorie donnée. Fallback automatique vers les anciens champs
+ * plats si le document est en schéma v1 (rétrocompat).
+ * @param {object|null|undefined} settings — doc Firestore dealerSettings
+ * @param {string} categoryKey
+ */
+export function getCategorySettings(settings, categoryKey) {
+  const empty = { productOrder: [], disabled: [], customProducts: [], overrides: {}, pricing: {} };
+  if (!settings) return empty;
+  const key = normalizeCategoryKey(categoryKey);
+  const byCat = settings.byCategory && settings.byCategory[key];
+  if (byCat && typeof byCat === 'object') {
+    return {
+      productOrder:   Array.isArray(byCat.productOrder)   ? byCat.productOrder   : [],
+      disabled:       Array.isArray(byCat.disabled)       ? byCat.disabled       : [],
+      customProducts: Array.isArray(byCat.customProducts) ? byCat.customProducts : [],
+      overrides:      byCat.overrides && typeof byCat.overrides === 'object' ? byCat.overrides : {},
+      pricing:        byCat.pricing   && typeof byCat.pricing   === 'object' ? byCat.pricing   : {},
+    };
+  }
+  // Legacy v1 : champs plats partagés par toutes les catégories
+  return {
+    productOrder:   Array.isArray(settings.productOrder)   ? settings.productOrder   : [],
+    disabled:       Array.isArray(settings.disabled)       ? settings.disabled       : [],
+    customProducts: Array.isArray(settings.customProducts) ? settings.customProducts : [],
+    overrides:      settings.overrides && typeof settings.overrides === 'object' ? settings.overrides : {},
+    pricing:        settings.pricing   && typeof settings.pricing   === 'object' ? settings.pricing   : {},
+  };
+}
+
+/**
  * @param {object|null|undefined} settings — doc Firestore dealerSettings
  * @param {Array<object>} [catalog=PRODUCTS]
+ * @param {string|null} [categoryKey] — si fourni, lit la tranche par catégorie
  * @returns {Array<object>} liste de produits avec active + champs mergés
  */
-export function buildMergedProductListFromSettings(settings, catalog = PRODUCTS) {
-  // Rien du tout en base : liste neutre basée sur le catalogue
-  if (!settings || (!Array.isArray(settings.productOrder)
-      && !settings.overrides
-      && !settings.customProducts
-      && !settings.disabled)) {
+export function buildMergedProductListFromSettings(settings, catalog = PRODUCTS, categoryKey = null) {
+  // Résout le scope : soit la tranche catégorie (v2+), soit settings brut (v1 legacy)
+  const scope = categoryKey != null
+    ? getCategorySettings(settings, categoryKey)
+    : (settings || null);
+
+  // Rien du tout : liste neutre basée sur le catalogue
+  if (!scope
+      || (!Array.isArray(scope.productOrder)
+        && !scope.overrides
+        && !scope.customProducts
+        && !scope.disabled)) {
     return catalog.map((p) => ({ ...p, active: true }));
   }
 
-  const customList = Array.isArray(settings.customProducts) ? settings.customProducts : [];
+  const customList = Array.isArray(scope.customProducts) ? scope.customProducts : [];
   const basePool = [...catalog, ...customList];
   const byId = new Map(basePool.map((p) => [p.id, p]));
+  const order = Array.isArray(scope.productOrder) ? scope.productOrder : [];
+
+  // Déduplication stricte : une seule entrée par id dans la sortie finale.
+  const seen = new Set();
   const ordered = [];
-  const order = Array.isArray(settings.productOrder) ? settings.productOrder : [];
+  const push = (p) => {
+    if (!p || seen.has(p.id)) return;
+    seen.add(p.id);
+    ordered.push(mergeOneRow(p, scope, catalog));
+  };
 
   // 1) Ordre explicite du dealer
-  for (const id of order) {
-    const p = byId.get(id);
-    if (p) ordered.push(mergeOneRow(p, settings, catalog));
-  }
-  // 2) Produits catalogue non ordonnés — ajoutés à la fin
-  for (const p of catalog) {
-    if (!ordered.find((o) => o.id === p.id)) ordered.push(mergeOneRow(p, settings, catalog));
-  }
-  // 3) Produits custom non ordonnés
-  for (const c of customList) {
-    if (!ordered.find((o) => o.id === c.id)) ordered.push(mergeOneRow(c, settings, catalog));
-  }
+  for (const id of order) push(byId.get(id));
+  // 2) Produits catalogue non ordonnés → fin
+  for (const p of catalog) push(p);
+  // 3) Customs non ordonnés → fin
+  for (const c of customList) push(c);
 
-  const disabledSet = new Set(Array.isArray(settings.disabled) ? settings.disabled : []);
+  const disabledSet = new Set(Array.isArray(scope.disabled) ? scope.disabled : []);
   return ordered.map((row) => ({
     ...row,
     active: !disabledSet.has(row.id),
   }));
 }
 
-function mergeOneRow(p, settings, catalog) {
+function mergeOneRow(p, scope, catalog) {
   if (p.isCustom) {
-    return { ...p, ...(settings.overrides?.[p.id] || {}) };
+    return { ...p, ...(scope.overrides?.[p.id] || {}) };
   }
   const base = catalog.find((c) => c.id === p.id) || p;
-  const ov = settings.overrides?.[p.id] || {};
+  const ov = scope.overrides?.[p.id] || {};
   return { ...base, ...ov };
 }
 

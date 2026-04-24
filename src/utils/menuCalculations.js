@@ -29,20 +29,21 @@ export function defaultPlacementsFromResponses(responses) {
  * @param {object|null} [dealerSettings]
  * @param {{ gstPercent: number, qstPercent: number }} [taxRates]
  */
-export function productFinancedValueCents(product, response, dealerSettings, taxRates = DEFAULT_QC_TAX) {
+export function productFinancedValueCents(product, response, dealerSettings, taxRates = DEFAULT_QC_TAX, categoryKey) {
   const p = getEnrichedById(product.id) || product;
   let base = 0;
   if (response?.priceCents != null) {
     base = response.priceCents;
   } else if (p.pricingMode === 'tiers' && response?.tierId) {
-    base = resolvePriceCents(p, dealerSettings, response.tierId, null);
+    base = resolvePriceCents(p, dealerSettings, response.tierId, null, categoryKey);
   } else if (p.isCustom) {
     base = resolveCustomProductPriceCents(
       p.pricingMode ? p : { ...p, pricingMode: 'fixed', defaultPriceCents: 0 },
       dealerSettings,
+      categoryKey,
     );
   } else {
-    base = resolvePriceCents(p, dealerSettings, null, null);
+    base = resolvePriceCents(p, dealerSettings, null, null, categoryKey);
   }
   if (p.financed === false) return 0;
   return withQcTaxCents(base, taxRates, p.taxable !== false);
@@ -53,18 +54,20 @@ export function productFinancedValueCents(product, response, dealerSettings, tax
  * @param {object[]} allProducts
  * @param {Record<string, any>} responses
  * @param {object|null} dealerSettings
+ * @param {string} [categoryKey]
  */
 export function sumFinancedAddOnCentsForIds(
   productIds,
   allProducts,
   responses,
   dealerSettings,
+  categoryKey,
 ) {
   const byId = Object.fromEntries(allProducts.map((p) => [p.id, p]));
   return productIds.reduce((s, id) => {
     const p = byId[id];
     if (!p) return s;
-    return s + productFinancedValueCents(p, responses?.[id], dealerSettings);
+    return s + productFinancedValueCents(p, responses?.[id], dealerSettings, DEFAULT_QC_TAX, categoryKey);
   }, 0);
 }
 

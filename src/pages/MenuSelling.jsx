@@ -251,7 +251,7 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
   const allProducts = useMemo(() => {
     let list;
     if (dealerSettingsSnapshot) {
-      const merged = buildMergedProductListFromSettings(dealerSettingsSnapshot, PRODUCTS)
+      const merged = buildMergedProductListFromSettings(dealerSettingsSnapshot, PRODUCTS, vehicle?.category)
         .filter((p) => p.active !== false)
         .map((p) => enrichProductWithPricing(p));
       list = merged.length ? merged : ENRICHED_PRODUCTS;
@@ -259,7 +259,7 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
       list = ENRICHED_PRODUCTS;
     }
     return list.filter((p) => !excludedSet.has(p.id));
-  }, [dealerSettingsSnapshot, excludedSet]);
+  }, [dealerSettingsSnapshot, excludedSet, vehicle?.category]);
 
   const products = useMemo(
     () => allProducts.filter((p) => getInterest(responses[p.id]) != null),
@@ -293,8 +293,8 @@ export default function MenuSelling({ presId, onComplete, onBack, timePerProduct
   );
 
   const importantAddOnCents = useMemo(
-    () => sumFinancedAddOnCentsForIds(importantIds, products, responses, dealerSettingsSnapshot),
-    [importantIds, products, responses, dealerSettingsSnapshot],
+    () => sumFinancedAddOnCentsForIds(importantIds, products, responses, dealerSettingsSnapshot, vehicle?.category),
+    [importantIds, products, responses, dealerSettingsSnapshot, vehicle?.category],
   );
 
   const totalDisplay = useMemo(

@@ -4,11 +4,11 @@
    ═══════════════════════════════════════════════════════════ */
 
 :root, [data-theme='light'] {
-  /* ── Palette signature ── */
-  --ivoire-50:   #FBF9F4;
-  --ivoire-100:  #F7F4EE;   /* Page background */
-  --ivoire-200:  #F1ECE1;   /* Cards subtle */
-  --ivoire-300:  #E8E0CF;   /* Borders warm */
+  /* ── Palette signature — Porcelaine (blanc chic, sans tirant beige) ── */
+  --ivoire-50:   #FFFFFF;
+  --ivoire-100:  #FAFAFB;   /* Page background — porcelaine */
+  --ivoire-200:  #F3F3F5;   /* Cards subtle */
+  --ivoire-300:  #E5E5EB;   /* Borders neutral */
 
   --graphite-900: #0E0E11;  /* Text/display */
   --graphite-800: #1A1A1F;
@@ -88,9 +88,9 @@
   --text-muted:     var(--graphite-400);
   --text-inverse:   var(--ivoire-100);
 
-  /* ── Backgrounds ── */
+  /* ── Backgrounds — porcelaine ── */
   --bg-page:    var(--ivoire-100);
-  --bg-canvas:  var(--ivoire-50);
+  --bg-canvas:  #FFFFFF;
   --bg-card:    #FFFFFF;
   --bg-input:   #FFFFFF;
   --bg-hover:   var(--ivoire-200);
@@ -207,8 +207,8 @@
   --z-cmdk:       1400;
 
   /* ── Component surfaces ── */
-  --surface-topbar: rgba(247, 244, 238, 0.88);
-  --surface-glass:  rgba(255, 255, 255, 0.72);
+  --surface-topbar: rgba(255, 255, 255, 0.86);
+  --surface-glass:  rgba(255, 255, 255, 0.78);
   --backdrop-blur:  saturate(180%) blur(18px);
 }
 

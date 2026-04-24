@@ -7,6 +7,8 @@ import {
   buildMergedProductListFromSettings,
   buildCatalogOverridesMap,
   buildCustomProductsPayload,
+  CATEGORY_KEYS,
+  CATEGORY_LABELS,
   DEALER_SETTINGS_VERSION,
 } from '../utils/dealerSettingsMerge';
 import PricingPanel from '../components/settings/PricingPanel';
@@ -266,33 +268,85 @@ function PdfViewer({ base64, name, onClose }) {
    ═══════════════════════════════════════════ */
 export default function Settings() {
   const navigate = useNavigate();
-  const { currentUser, userProfile, isDemo } = useAuth();
+  const { userProfile, isDemo } = useAuth();
   const dealerId = userProfile?.dealerId || 'demo';
 
+  const [category,     setCategory]    = useState(CATEGORY_KEYS[0]); // automobile par défaut
   const [tab,          setTab]         = useState('products');
-  const [products,     setProducts]    = useState([]);
+  // État par catégorie : chacune a sa propre liste de produits + grille tarifaire
+  const [productsByCat, setProductsByCat] = useState(() => {
+    const seed = {};
+    for (const k of CATEGORY_KEYS) seed[k] = [];
+    return seed;
+  });
+  const [pricingByCat, setPricingByCat] = useState(() => {
+    const seed = {};
+    for (const k of CATEGORY_KEYS) seed[k] = {};
+    return seed;
+  });
   const [saving,       setSaving]      = useState(false);
   const [saved,        setSaved]       = useState(false);
   const [showCustom,   setShowCustom]  = useState(false);
   const [editingCustom,setEditingCustom]=useState(null);
   const [pdfViewer,    setPdfViewer]   = useState(null);
-  const [pricing,      setPricing]      = useState({});
 
-  /* Load products + tarifs from Firestore */
+  // Alias vers la tranche courante (lecture seule pour les sous-composants)
+  const products = productsByCat[category] || [];
+  const pricing  = pricingByCat[category]  || {};
+
+  // Setters qui ne touchent qu'à la catégorie active
+  const setProducts = (updater) => {
+    setProductsByCat(prev => {
+      const curr = prev[category] || [];
+      const next = typeof updater === 'function' ? updater(curr) : updater;
+      return { ...prev, [category]: next };
+    });
+  };
+  const setPricing = (updater) => {
+    setPricingByCat(prev => {
+      const curr = prev[category] || {};
+      const next = typeof updater === 'function' ? updater(curr) : updater;
+      return { ...prev, [category]: next };
+    });
+  };
+
+  /* Load products + tarifs from Firestore (pour les 3 catégories) */
   useEffect(() => {
     async function load() {
       if (isDemo) {
-        setProducts(PRODUCTS.map(p => ({ ...p, active: true })));
-        setPricing({});
+        const seedProds = {};
+        const seedPrice = {};
+        for (const k of CATEGORY_KEYS) {
+          seedProds[k] = PRODUCTS.map(p => ({ ...p, active: true }));
+          seedPrice[k] = {};
+        }
+        setProductsByCat(seedProds);
+        setPricingByCat(seedPrice);
         return;
       }
       try {
         const settings = await loadDealerSettings(dealerId);
-        setProducts(buildMergedProductListFromSettings(settings, PRODUCTS));
-        setPricing(settings?.pricing && typeof settings.pricing === 'object' ? settings.pricing : {});
+        const seedProds = {};
+        const seedPrice = {};
+        for (const k of CATEGORY_KEYS) {
+          seedProds[k] = buildMergedProductListFromSettings(settings, PRODUCTS, k);
+          // Lit soit byCategory[k].pricing, soit la grille plate legacy (partagée)
+          const cat = settings?.byCategory?.[k];
+          seedPrice[k] = cat?.pricing && typeof cat.pricing === 'object'
+            ? cat.pricing
+            : (settings?.pricing && typeof settings.pricing === 'object' ? settings.pricing : {});
+        }
+        setProductsByCat(seedProds);
+        setPricingByCat(seedPrice);
       } catch {
-        setProducts(PRODUCTS.map(p => ({ ...p, active: true })));
-        setPricing({});
+        const seedProds = {};
+        const seedPrice = {};
+        for (const k of CATEGORY_KEYS) {
+          seedProds[k] = PRODUCTS.map(p => ({ ...p, active: true }));
+          seedPrice[k] = {};
+        }
+        setProductsByCat(seedProds);
+        setPricingByCat(seedPrice);
       }
     }
     load();
@@ -302,14 +356,20 @@ export default function Settings() {
     if (isDemo) { alert('Mode démo — sauvegardes désactivées'); return; }
     setSaving(true);
     try {
-      const overrides = buildCatalogOverridesMap(products, PRODUCTS);
+      const byCategory = {};
+      for (const k of CATEGORY_KEYS) {
+        const prods = productsByCat[k] || [];
+        byCategory[k] = {
+          productOrder:   prods.map(p => p.id),
+          disabled:       prods.filter(p => !p.active).map(p => p.id),
+          customProducts: buildCustomProductsPayload(prods),
+          overrides:      buildCatalogOverridesMap(prods, PRODUCTS),
+          pricing:        pricingByCat[k] || {},
+        };
+      }
       await saveDealerSettings(dealerId, {
-        schemaVersion:  DEALER_SETTINGS_VERSION,
-        productOrder:   products.map(p => p.id),
-        disabled:       products.filter(p => !p.active).map(p => p.id),
-        customProducts: buildCustomProductsPayload(products),
-        overrides,
-        pricing,
+        schemaVersion: DEALER_SETTINGS_VERSION,
+        byCategory,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -317,7 +377,7 @@ export default function Settings() {
     finally { setSaving(false); }
   };
 
-  /* Reorder */
+  /* Reorder (catégorie active) */
   const moveUp   = (i) => { if (i === 0) return; const a = [...products]; [a[i-1],a[i]] = [a[i],a[i-1]]; setProducts(a); };
   const moveDown = (i) => { if (i >= products.length-1) return; const a=[...products]; [a[i],a[i+1]]=[a[i+1],a[i]]; setProducts(a); };
   const toggle   = (i) => { const a=[...products]; a[i]={ ...a[i], active: !a[i].active }; setProducts(a); };
@@ -336,14 +396,14 @@ export default function Settings() {
     setEditingCustom(null);
   };
 
-  /* Text override for a product */
+  /* Text override for a product (catégorie active) */
   const updateText = (productId, field, value) => {
     setProducts(prev => prev.map(p =>
       p.id === productId ? { ...p, [field]: value } : p
     ));
   };
 
-  /* PDF for a product */
+  /* PDF for a product (catégorie active) */
   const updatePdf = (productId, pdfName, pdfBase64) => {
     setProducts(prev => prev.map(p =>
       p.id === productId ? { ...p, pdfName, pdfBase64 } : p
@@ -388,11 +448,48 @@ export default function Settings() {
           </div>
         )}
 
-        <div style={{ marginBottom: '1.75rem' }}>
+        <div style={{ marginBottom: '1.25rem' }}>
           <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Paramètres du concessionnaire</h1>
           <p style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem', margin: 0 }}>
-            Personnalisez vos produits, textes et documents pour ce concessionnaire.
+            Personnalisez vos produits, textes et documents par catégorie de véhicule.
           </p>
+        </div>
+
+        {/* ── Sélecteur de catégorie ── */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${CATEGORY_KEYS.length}, 1fr)`,
+          gap: '0.625rem',
+          marginBottom: '1.5rem',
+        }}>
+          {CATEGORY_KEYS.map((k) => {
+            const isActive = category === k;
+            const emoji = k === 'automobile' ? '🚗' : k === 'loisirs' ? '🏍️' : '🚐';
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setCategory(k)}
+                style={{
+                  padding: '0.95rem 1rem',
+                  borderRadius: 'var(--r-lg)',
+                  border: isActive ? '1.5px solid var(--brand-red)' : '1px solid var(--border-sm)',
+                  background: isActive ? 'var(--brand-red-light)' : 'var(--bg-card)',
+                  color: isActive ? 'var(--brand-red)' : 'var(--text-primary)',
+                  fontWeight: isActive ? 700 : 600,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                  transition: 'all 0.15s var(--ease-out)',
+                  boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
+                }}
+                aria-pressed={isActive}
+              >
+                <span style={{ fontSize: '1.1rem' }}>{emoji}</span>
+                {CATEGORY_LABELS[k]}
+              </button>
+            );
+          })}
         </div>
 
         {/* Tabs */}

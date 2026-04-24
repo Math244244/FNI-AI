@@ -50,7 +50,7 @@ export default function PresentationStart() {
         const s = await loadDealerSettings(userProfile.dealerId);
         if (cancelled) return;
         setDealerSettingsSnapshot(s);
-        const merged = buildMergedProductListFromSettings(s, PRODUCTS)
+        const merged = buildMergedProductListFromSettings(s, PRODUCTS, vehicle?.category)
           .filter((p) => p.active !== false)
           .map((p) => enrichProductWithPricing(p));
         if (merged.length) setProducts(merged);
@@ -60,7 +60,7 @@ export default function PresentationStart() {
       }
     })();
     return () => { cancelled = true; };
-  }, [userProfile?.dealerId, setDealerSettingsSnapshot]);
+  }, [userProfile?.dealerId, vehicle?.category, setDealerSettingsSnapshot]);
 
   // Fermeture du dropdown au clic extérieur
   useEffect(() => {

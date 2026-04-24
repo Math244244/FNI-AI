@@ -16,7 +16,7 @@ export function ThemeProvider({ children }) {
     root.setAttribute('data-theme', theme);
     localStorage.setItem(STORAGE_KEY, theme);
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0E0E11' : '#F7F4EE');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0E0E11' : '#FAFAFB');
   }, [theme]);
 
   const toggleTheme = useCallback(() => {

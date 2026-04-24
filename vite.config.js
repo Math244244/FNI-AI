@@ -13,7 +13,7 @@ export default defineConfig({
         short_name: 'Avantage+',
         description: 'Plateforme F&I prestige · Présentations véhicules signature.',
         theme_color: '#0E0E11',
-        background_color: '#F7F4EE',
+        background_color: '#FAFAFB',
         display: 'standalone',
         orientation: 'landscape',
         start_url: '/',
@@ -24,6 +24,11 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Cache busting agressif : le nouveau SW prend le contrôle immédiatement
+        // et purge les caches périmés. Évite les "vieux bundles" persistants.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         maximumFileSizeToCacheInBytes: 5_000_000,
         navigateFallback: 'index.html',

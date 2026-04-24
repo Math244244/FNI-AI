@@ -57,7 +57,7 @@ export default function PresentationSummary({
   // Calculs financiers — toujours sur la liste retenue
   const interestedIds = interested.map((p) => p.id);
   const addOnCents = sumFinancedAddOnCentsForIds(
-    interestedIds, products, responses, dealerSettingsSnapshot,
+    interestedIds, products, responses, dealerSettingsSnapshot, vehicle?.category,
   );
   const totalDisplay = displayColumnCost(financing, addOnCents);
   const delta = deltaVersusBase(financing, addOnCents);
