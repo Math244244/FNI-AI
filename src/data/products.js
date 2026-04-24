@@ -76,6 +76,14 @@ export const PRODUCTS = [
         'Aucun déboursé au moment de la panne',
       ],
     },
+    facts: {
+      headline: 'Faits & statistiques',
+      image: H.stats,
+      statValue: '~190',
+      statLabel: 'défauts relevés pour 100 véhicules (industrie, étude qualité initiale 2023)',
+      body: 'Les études de qualité (ex. IQS J.D. Power) montrent des centaines de défauts par centaine de véhicules neufs : les réparations hors garantie restent d’actualité tout au long de la vie du véhicule.',
+      footnote: 'Contexte : études de qualité initiale publiées par des cabinets reconnus (J.D. Power, etc.) — chiffres indicatifs, année modèle & segment variables.',
+    },
     vehicle_dots: [
       { top: '50%', left: '30%', label: 'Moteur',              icon: 'Cog',      description: 'Panne moteur — réparation la plus coûteuse sur un véhicule.',          cost: '3 500 $ – 8 000 $', image: H.engine,      color: '#2B6CDB' },
       { top: '60%', left: '50%', label: 'Transmission',        icon: 'Settings', description: 'Remplacement d\'une boîte automatique, pièce et main-d\'œuvre incluses.', cost: '2 800 $ – 6 500 $', image: H.transmission, color: '#2B6CDB' },
@@ -113,6 +121,14 @@ export const PRODUCTS = [
         'Remplacement ou réparation inclus',
         'Validité sur toutes les routes du Canada et des États-Unis',
       ],
+    },
+    facts: {
+      headline: 'Faits & statistiques',
+      image: H.tire_flat,
+      statValue: '2 000-6 000 $',
+      statLabel: 'fourchette fréquente pour pneus performance ou jantes (remplacement / parité, ordre de grandeur marché canadien)',
+      body: 'Gravillons, nids-de-poule et bords de trottoir : les bris de pneus, jantes et vitrage figurent parmi les motifs de remplacement les plus visibles en concession après le printemps.',
+      footnote: 'Indicatif : montants réels selon produit, démontage, alignement, taxes. Pas une garantie d’estimation.',
     },
     vehicle_dots: [
       { top: '76%', left: '18%', label: 'Pneu avant gauche',   icon: 'CircleDot',      description: 'Crevaison ou talonnage sur gravillons ou nid-de-poule.',              cost: '250 $ – 450 $',    image: H.tire_flat,  color: '#2B6CDB' },
@@ -152,6 +168,14 @@ export const PRODUCTS = [
         'Imperméabilisation complète intérieure et extérieure',
       ],
     },
+    facts: {
+      headline: 'Faits & statistiques',
+      image: H.rust,
+      statValue: '10-15 %/an',
+      statLabel: 'dépréciation moyenne — un véhicule bien entretenu se vend plus vite (guides de reprise, Marché de l’occasion Canada)',
+      body: 'L’apparence (carrosserie, intérieur, corrosion) pèse lourdement sur l’offre de reprise : protéger l’enveloppe, c’est préserver le pouvoir d’achat de votre prochaine transaction.',
+      footnote: 'Ordre de grandeur issu de publications du marché (Black Book, guide des commerçants) — sujet à l’échantillon, à l’état et à la demande.',
+    },
     vehicle_dots: [
       { top: '52%', left: '50%', label: 'Carrosserie',         icon: 'Palette',      description: 'Rouille sur la carrosserie — dépréciation visible à la revente.',       cost: '-25 à -40% valeur',          image: H.rust,          color: '#2B6CDB' },
       { top: '32%', left: '50%', label: 'Toit',                icon: 'Home',         description: 'Corrosion du toit — négligée car peu visible jusqu\'à la revente.',     cost: '800 $ – 3 000 $ réparation', image: H.rust,          color: '#2B6CDB' },
@@ -190,6 +214,14 @@ export const PRODUCTS = [
         'Prime mensuelle fixe intégrée au financement',
       ],
     },
+    facts: {
+      headline: 'Faits & statistiques',
+      image: H.family,
+      statValue: '~33 k$',
+      statLabel: 'financement moyen d’un véhicule neuf au Canada (ordre de grandeur 2022-2023, Statistique Canada, inventaire foyers & crédit)',
+      body: 'Un décès soudain laisse parfois une dette de véhicule : l’assurance-vie liée au prêt vise à solder le solde afin d’alléger le fardeau pour la famille.',
+      footnote: 'Moyennes nationales, arrondies — vérifier auprès de votre prêteur et votre police.',
+    },
     vehicle_dots: [
       { top: '38%', left: '50%', label: 'Protection familiale', icon: 'Heart',      description: 'Le solde de votre prêt est remboursé à votre décès — votre famille garde le véhicule.', cost: 'Prêt moyen : 28 000 $',   image: H.family,   color: '#2B6CDB' },
       { top: '55%', left: '28%', label: 'Couverture immédiate', icon: 'ClipboardCheck', description: 'Dès la signature du contrat, la protection est active — aucun délai de carence.',   cost: 'À partir de 12 $/mois', image: H.invoice,  color: '#2B6CDB' },
@@ -226,6 +258,14 @@ export const PRODUCTS = [
         'Complète votre régime d\'assurance groupe si vous en avez un',
       ],
     },
+    facts: {
+      headline: 'Faits & statistiques',
+      image: H.stats,
+      statValue: '1 / 3',
+      statLabel: 'Canadiens : invalidité de plus de 90 jours au cours de la vie (donnée couramment citée par l’industrie des assurances de personnes, ARTA / ACB)',
+      body: 'Une mauvaise chute, une chirurgie ou un arrêt prolongé : sans revenu de travail, les paiements de prêt continuent. L’assurance invalidité vise justement cette faille du budget.',
+      footnote: 'Contexte pédagogique (présentation) : vérifier sur la police les délais, exclusions et définitions d’invalidité.',
+    },
     vehicle_dots: [
       { top: '38%', left: '50%', label: '1 sur 3 Canadiens',    icon: 'BarChart3',    description: 'Statistique réelle : 1 Canadien sur 3 vivra une invalidité de plus de 90 jours.', cost: 'Perte de revenus : 3-24 mois',   image: H.stats,      color: '#2B6CDB' },
       { top: '55%', left: '28%', label: 'Vos paiements couverts', icon: 'CreditCard', description: 'Chaque versement mensuel de votre prêt auto est pris en charge — même à long terme.',cost: 'Jusqu\'à 24 mois de couverture', image: H.invoice,    color: '#2B6CDB' },
@@ -261,6 +301,14 @@ export const PRODUCTS = [
         'Protection active dès la 1ère journée sur route',
         'Couvre vol total, perte totale par accident ou catastrophe naturelle',
       ],
+    },
+    facts: {
+      headline: 'Faits & statistiques',
+      image: H.calculator,
+      statValue: '20-40 %',
+      statLabel: 'déclin de valeur typique d’un véhicule neuf dès la 1ʳᵉ année (amortissement accéléré vs. solde de prêt — littérature finance & GAP, Canada)',
+      body: 'En perte totale, l’assureur règle souvent la valeur de remplacement (moins franchise), alors que le prêt retombe sur le coût d’acquisition. Le GAP vise l’espace entre les deux.',
+      footnote: 'Exemples pédagogiques seulement : montant exact selon police, taux, terme, mise de fonds.',
     },
     vehicle_dots: [
       { top: '38%', left: '50%', label: 'Perte totale',         icon: 'Zap',         description: 'Collision frontale : véhicule irréparable. Assureur paie la valeur marchande, pas le solde.', cost: 'Écart moyen : 4 000 $ – 9 000 $',   image: H.crash,      color: '#2B6CDB' },

@@ -15,6 +15,7 @@ import { X, Clock, Keyboard, Check } from 'lucide-react';
 import BreadcrumbProduct from '../components/slide/BreadcrumbProduct';
 import VehicleImage from '../components/slide/VehicleImage';
 import HotspotChips, { HotspotDetailPanel } from '../components/slide/HotspotChips';
+import FactsPanel from '../components/slide/FactsPanel';
 import DecisionBar from '../components/slide/DecisionBar';
 import TierSelector from '../components/slide/TierSelector';
 import Dialog from '../components/ui/Dialog';
@@ -618,6 +619,7 @@ export default function SlideDeck() {
             overflow: 'hidden',
           }}
         >
+          {activeHot === null && <FactsPanel facts={product?.facts} />}
           {activeHot !== null && dots[activeHot] ? (
             <HotspotDetailPanel
               dot={dots[activeHot]}

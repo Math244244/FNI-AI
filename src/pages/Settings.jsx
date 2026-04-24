@@ -45,6 +45,12 @@ function CustomPageModal({ initial, onSave, onClose }) {
   const [image,   setImage]   = useState(initial?.customImage || '');
   const [pdfName, setPdfName] = useState(initial?.pdfName || '');
   const [pdfB64,  setPdfB64]  = useState(initial?.pdfBase64 || '');
+  const [factsHead, setFactsHead] = useState(initial?.facts?.headline || 'Faits & statistiques');
+  const [factsImg,  setFactsImg]  = useState(initial?.facts?.image || '');
+  const [factsVal,  setFactsVal]  = useState(initial?.facts?.statValue || '');
+  const [factsLab,  setFactsLab]  = useState(initial?.facts?.statLabel || '');
+  const [factsBody, setFactsBody] = useState(initial?.facts?.body || '');
+  const [factsFoot, setFactsFoot] = useState(initial?.facts?.footnote || '');
 
   const fileRef = useRef();
   const pdfRef  = useRef();
@@ -70,6 +76,15 @@ function CustomPageModal({ initial, onSave, onClose }) {
 
   const handleSave = () => {
     if (!title.trim()) { alert('Le titre est requis'); return; }
+    const factsPayload = {
+      headline: factsHead.trim() || 'Faits & statistiques',
+      image: factsImg.trim() || undefined,
+      statValue: factsVal.trim() || undefined,
+      statLabel: factsLab.trim() || undefined,
+      body: factsBody.trim() || undefined,
+      footnote: factsFoot.trim() || undefined,
+    };
+    const hasFacts = !!(factsBody.trim() || factsVal.trim() || factsImg.trim() || factsLab.trim() || factsFoot.trim());
     onSave({
       id:     initial?.id || `custom_${Date.now()}`,
       title,
@@ -86,6 +101,7 @@ function CustomPageModal({ initial, onSave, onClose }) {
       pdfName:      pdfName  || null,
       pdfBase64:    pdfB64   || null,
       customContent: hook,
+      facts:        hasFacts ? factsPayload : null,
     });
   };
 
@@ -226,6 +242,40 @@ function CustomPageModal({ initial, onSave, onClose }) {
                 </div>
               )}
               <input ref={pdfRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handlePdfFile} />
+            </div>
+          </div>
+
+          {/* Encart faits (présentation, bas-gauche visuel) */}
+          <div style={{ borderTop: '1px solid var(--border-hair)', paddingTop: '1rem' }}>
+            <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>📊 Faits & statistiques (encart sous le visuel)</label>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: '0 0 0.75rem' }}>
+              Optionnel. S’affiche en bas à gauche sur le visuel du véhicule pendant la présentation.
+            </p>
+            <div className="form-group">
+              <label className="form-label">Titre de l’encart</label>
+              <input className="form-input" value={factsHead} onChange={e => setFactsHead(e.target.value)} placeholder="Faits & statistiques" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Image (URL)</label>
+              <input className="form-input" value={factsImg} onChange={e => setFactsImg(e.target.value)} placeholder="https://…" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className="form-group">
+                <label className="form-label">Chiffre clé</label>
+                <input className="form-input" value={factsVal} onChange={e => setFactsVal(e.target.value)} placeholder="ex. 190" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Légende du chiffre</label>
+                <input className="form-input" value={factsLab} onChange={e => setFactsLab(e.target.value)} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Texte</label>
+              <textarea className="form-input" value={factsBody} onChange={e => setFactsBody(e.target.value)} rows={3} style={{ fontSize: '0.8125rem', resize: 'vertical' }} />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Source / mention</label>
+              <input className="form-input" value={factsFoot} onChange={e => setFactsFoot(e.target.value)} />
             </div>
           </div>
         </div>
@@ -401,6 +451,17 @@ export default function Settings() {
     setProducts(prev => prev.map(p =>
       p.id === productId ? { ...p, [field]: value } : p
     ));
+  };
+
+  /** @param {Record<string, string|null|undefined>} patch */
+  const updateFacts = (productId, patch) => {
+    setProducts(prev => prev.map((p) => {
+      if (p.id !== productId) return p;
+      const base = p.facts && typeof p.facts === 'object' ? { ...p.facts } : {};
+      const next = { ...base, ...patch };
+      Object.keys(next).forEach((k) => { if (next[k] === '') delete next[k]; });
+      return { ...p, facts: next };
+    }));
   };
 
   /* PDF for a product (catégorie active) */
@@ -627,15 +688,17 @@ export default function Settings() {
         {tab === 'texts' && (
           <div className="animate-in">
             <p style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-              Personnalisez les textes affichés dans chaque slide de présentation.
+              Textes de slide, puis encart <strong>Faits & statistiques</strong> (par catégorie de véhicule sélectionnée en haut de page) — chaque programme peut avoir son propre contenu d’encart, modifiable ici.
             </p>
-            {products.filter(p => !p.isCustom).map(p => (
+            {products.map(p => (
               <div key={p.id} className="card" style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '1.3rem' }}>{p.icon}</span>
-                  <h3 style={{ fontSize: '0.9375rem' }}>{p.title}</h3>
+                  <h3 style={{ fontSize: '0.9375rem', margin: 0 }}>{p.title}</h3>
+                  {p.isCustom && <span className="badge badge-blue">Personnalisé</span>}
                 </div>
 
+                {!p.isCustom && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <div className="section-label" style={{ color: 'var(--brand-red)' }}>✨ Accroche</div>
@@ -668,6 +731,68 @@ export default function Settings() {
                       <textarea className="form-input" value={p.solution?.points?.join('\n') || ''} rows={3} style={{ fontSize: '0.8125rem', resize: 'vertical' }}
                         onChange={e => updateText(p.id, 'solution', { ...p.solution, points: e.target.value.split('\n') })} />
                     </div>
+                  </div>
+                </div>
+                )}
+
+                <div style={{ marginTop: p.isCustom ? 0 : '1.25rem', paddingTop: p.isCustom ? 0 : '1.25rem', borderTop: p.isCustom ? 'none' : '1px solid var(--border-hair)' }}>
+                  <div className="section-label" style={{ color: 'var(--info)' }}>📊 Faits & statistiques (encart bas-gauche, visuel)</div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: '0.35rem 0 0.75rem' }}>
+                    Pour la catégorie <strong>{CATEGORY_LABELS[category] || category}</strong> — ajustez le texte, le chiffre d’appui et l’illustration.
+                  </p>
+                  <div className="form-group">
+                    <label className="form-label">Titre de l’encart</label>
+                    <input
+                      className="form-input"
+                      value={p.facts?.headline || ''}
+                      placeholder="Faits & statistiques"
+                      onChange={e => updateFacts(p.id, { headline: e.target.value || undefined })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Image (URL)</label>
+                    <input
+                      className="form-input"
+                      value={p.facts?.image || ''}
+                      placeholder="https://…"
+                      onChange={e => updateFacts(p.id, { image: e.target.value || undefined })}
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">Chiffre clé</label>
+                      <input
+                        className="form-input"
+                        value={p.facts?.statValue || ''}
+                        onChange={e => updateFacts(p.id, { statValue: e.target.value || undefined })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Légende du chiffre</label>
+                      <input
+                        className="form-input"
+                        value={p.facts?.statLabel || ''}
+                        onChange={e => updateFacts(p.id, { statLabel: e.target.value || undefined })}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Texte</label>
+                    <textarea
+                      className="form-input"
+                      value={p.facts?.body || ''}
+                      rows={3}
+                      style={{ fontSize: '0.8125rem', resize: 'vertical' }}
+                      onChange={e => updateFacts(p.id, { body: e.target.value || undefined })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Source / mention de bas de carte</label>
+                    <input
+                      className="form-input"
+                      value={p.facts?.footnote || ''}
+                      onChange={e => updateFacts(p.id, { footnote: e.target.value || undefined })}
+                    />
                   </div>
                 </div>
               </div>

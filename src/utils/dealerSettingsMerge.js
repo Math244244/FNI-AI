@@ -50,7 +50,7 @@ export function deepEqual(a, b) {
 }
 
 const OVERRIDE_FIELDS = [
-  'title', 'icon', 'hook', 'risk', 'solution',
+  'title', 'icon', 'hook', 'risk', 'solution', 'facts',
   'pdfName', 'pdfBase64', 'customImage', 'customContent',
 ];
 
@@ -182,13 +182,20 @@ export function buildMergedProductListFromSettings(settings, catalog = PRODUCTS,
   }));
 }
 
+function mergeFacts(baseFacts, overrideFacts) {
+  if (overrideFacts === null) return null;
+  if (overrideFacts === undefined) return baseFacts;
+  if (!baseFacts || typeof baseFacts !== 'object') return overrideFacts;
+  return { ...baseFacts, ...overrideFacts };
+}
+
 function mergeOneRow(p, scope, catalog) {
+  const ov = scope.overrides?.[p.id] || {};
   if (p.isCustom) {
-    return { ...p, ...(scope.overrides?.[p.id] || {}) };
+    return { ...p, ...ov, facts: mergeFacts(p.facts, ov.facts) };
   }
   const base = catalog.find((c) => c.id === p.id) || p;
-  const ov = scope.overrides?.[p.id] || {};
-  return { ...base, ...ov };
+  return { ...base, ...ov, facts: mergeFacts(base.facts, ov.facts) };
 }
 
 /**
